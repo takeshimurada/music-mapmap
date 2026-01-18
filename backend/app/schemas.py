@@ -10,6 +10,7 @@ class AlbumBase(BaseModel):
     genre: str
     genre_vibe: float
     region_bucket: str
+    country: Optional[str] = None
     cover_url: Optional[str] = None
 
 class AlbumResponse(AlbumBase):

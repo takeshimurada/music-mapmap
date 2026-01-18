@@ -9,8 +9,7 @@ export const getExtendedAlbumDetails = async (album: Album, retries = 2): Promis
   // API 키 확인
   const apiKey = import.meta.env.VITE_API_KEY;
   if (!apiKey || apiKey === '') {
-    console.error("❌ VITE_API_KEY is not set in .env.local");
-    alert("Gemini API 키가 설정되지 않았습니다. .env.local 파일에 VITE_API_KEY를 설정하세요.");
+    console.warn("⚠️ VITE_API_KEY is not set. AI features will be disabled. Set VITE_API_KEY in .env.local to enable AI analysis.");
     return null;
   }
 
@@ -117,13 +116,13 @@ CRITICAL INSTRUCTIONS:
       
       // 마지막 시도에서도 실패하면 에러 메시지 표시
       if (error.message?.includes('API key')) {
-        alert("API 키 오류: Gemini API 키를 확인하세요.");
+        console.error("❌ API 키 오류: Gemini API 키를 확인하세요.");
       } else if (error.message?.includes('quota')) {
-        alert("API 할당량 초과: 나중에 다시 시도하세요.");
+        console.error("❌ API 할당량 초과: 나중에 다시 시도하세요.");
       } else if (error.message?.includes('JSON')) {
-        alert("AI 응답 파싱 실패. 다시 시도해주세요.");
+        console.error("❌ AI 응답 파싱 실패. 다시 시도해주세요.");
       } else {
-        alert(`AI 분석 생성 실패 (${retries + 1}회 시도): ${error.message || '알 수 없는 오류'}`);
+        console.error(`❌ AI 분석 생성 실패 (${retries + 1}회 시도):`, error.message || '알 수 없는 오류');
       }
       
       return null;

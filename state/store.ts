@@ -6,6 +6,7 @@ interface AppState {
   filteredAlbums: Album[];
   selectedAlbumId: string | null;
   brushedAlbumIds: string[]; // IDs selected via brush tool
+  searchMatchedAlbumIds: string[]; // IDs matched by search (for highlighting)
   
   // Filters
   yearRange: [number, number];
@@ -37,14 +38,21 @@ const ALL_REGIONS: Region[] = ['North America', 'Europe', 'Asia', 'South America
 
 const applyFilters = (state: AppState): Album[] => {
   return state.albums.filter(album => {
-    // 뷰포트가 곧 필터 (yearRange 대신 viewportYearRange 사용)
-    const inYear = album.year >= state.viewportYearRange[0] && album.year <= state.viewportYearRange[1];
+    // 지역 필터만 적용, 연도 필터는 투명도로만 처리 (모든 노드 표시)
     const inRegion = state.activeRegions.includes(album.region);
-    const inSearch = state.searchQuery === '' || 
-                     album.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || 
-                     album.artist.toLowerCase().includes(state.searchQuery.toLowerCase());
-    return inYear && inRegion && inSearch;
+    return inRegion;
   });
+};
+
+const getSearchMatchedIds = (state: AppState): string[] => {
+  if (state.searchQuery === '') return [];
+  
+  return state.albums
+    .filter(album => 
+      album.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || 
+      album.artist.toLowerCase().includes(state.searchQuery.toLowerCase())
+    )
+    .map(album => album.id);
 };
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
@@ -59,7 +67,7 @@ const transformAlbumData = (backendAlbum: any): Album => {
     vibe: backendAlbum.genre_vibe,
     popularity: backendAlbum.popularity,
     region: backendAlbum.region_bucket as Region,
-    country: backendAlbum.country, // 국가 정보 추가
+    country: backendAlbum.country || undefined, // 국가 정보 (없으면 undefined)
     coverUrl: backendAlbum.cover_url,
     genres: [backendAlbum.genre],
   };
@@ -70,6 +78,7 @@ export const useStore = create<AppState>((set, get) => ({
   filteredAlbums: [],
   selectedAlbumId: null,
   brushedAlbumIds: [],
+  searchMatchedAlbumIds: [],
   yearRange: [MIN_YEAR, MAX_YEAR],
   activeRegions: ALL_REGIONS,
   searchQuery: '',
@@ -80,22 +89,43 @@ export const useStore = create<AppState>((set, get) => ({
   loadAlbums: async () => {
     try {
       set({ loading: true });
+      console.log('🔄 Loading albums from:', `${BACKEND_URL}/albums?limit=2000`);
+      
       const response = await fetch(`${BACKEND_URL}/albums?limit=2000`);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error(`❌ HTTP ${response.status} Error:`, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+      
       const data = await response.json();
+      console.log('📦 API Response:', data);
+      
+      // 백엔드 응답 검증
+      if (!data || !data.data || !Array.isArray(data.data)) {
+        console.error('❌ Invalid API response format:', data);
+        throw new Error('Invalid API response format');
+      }
       
       // 백엔드 응답을 프론트엔드 타입으로 변환
       const albums: Album[] = data.data.map(transformAlbumData);
+      console.log(`✅ Loaded ${albums.length} albums`);
       
       const state = get();
       const newState = { ...state, albums, loading: false };
+      const filtered = applyFilters(newState as AppState);
+      console.log(`🔍 Filtered albums: ${filtered.length} (activeRegions: ${state.activeRegions.length}, viewportYearRange: [${state.viewportYearRange[0]}, ${state.viewportYearRange[1]}])`);
+      
       set({ 
         ...newState,
-        filteredAlbums: applyFilters(newState as AppState),
+        filteredAlbums: filtered,
         loading: false 
       });
     } catch (error) {
-      console.error('Failed to load albums:', error);
-      set({ loading: false });
+      console.error('❌ Failed to load albums:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      set({ loading: false, albums: [], filteredAlbums: [] });
     }
   },
 
@@ -120,9 +150,11 @@ export const useStore = create<AppState>((set, get) => ({
   setSearchQuery: (query) => set((state) => {
     const newState = { ...state, searchQuery: query };
     const filtered = applyFilters(newState as AppState);
+    const searchMatched = getSearchMatchedIds(newState as AppState);
     return { 
       ...newState, 
       filteredAlbums: filtered,
+      searchMatchedAlbumIds: searchMatched,
     };
   }),
 
