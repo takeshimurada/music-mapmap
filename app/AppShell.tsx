@@ -3,13 +3,13 @@ import { MapCanvas } from '../components/MapCanvas/MapCanvas';
 import { SearchBar } from '../components/SearchBar/SearchBar';
 import { TimelineBar } from '../components/TimelineBar/TimelineBar';
 import { DetailPanel } from '../components/DetailPanel/DetailPanel';
-import { MyLogsPanel } from '../components/MyLogsPanel/MyLogsPanel';
+import { MyPanel } from '../components/MyPanel/MyPanel';
 import { useStore } from '../state/store';
-import { Music2, BookOpen } from 'lucide-react';
+import { Music2, Sparkles } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
   const { selectedAlbumId, loadAlbums, loading } = useStore();
-  const [showMyLogs, setShowMyLogs] = useState(false);
+  const [showMyPanel, setShowMyPanel] = useState(false);
 
   useEffect(() => {
     loadAlbums();
@@ -59,13 +59,13 @@ export const AppShell: React.FC = () => {
       {/* 2. Right Side - 독립적인 My Log & 검색창 + DetailPanel (Glass Material 강화) */}
       <div className="absolute top-6 right-6 z-40 flex flex-col gap-3 w-[320px]">
         
-        {/* My Logs 버튼 (Glass Material - 매우 투명하게) */}
+        {/* My Panel Button */}
         <button
-          onClick={() => setShowMyLogs(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.02] backdrop-blur-2xl hover:bg-white/[0.08] border border-white/[0.08] hover:border-accent/40 rounded-xl transition-all shadow-lg group"
+          onClick={() => setShowMyPanel(true)}
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500/20 to-purple-500/20 backdrop-blur-2xl hover:from-pink-500/30 hover:to-purple-500/30 border border-pink-500/40 hover:border-pink-500/60 rounded-xl transition-all shadow-lg shadow-pink-500/20 group"
         >
-          <BookOpen size={18} className="text-accent" />
-          <span className="text-sm font-bold text-white">My Logs</span>
+          <Sparkles size={18} className="text-pink-400 group-hover:scale-110 transition-transform" />
+          <span className="text-sm font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">My</span>
         </button>
         
         {/* 앨범/아티스트 검색창 (Glass Material - 매우 투명하게, overflow visible) */}
@@ -85,8 +85,8 @@ export const AppShell: React.FC = () => {
         )}
       </div>
 
-      {/* My Logs Modal */}
-      {showMyLogs && <MyLogsPanel onClose={() => setShowMyLogs(false)} />}
+      {/* My Panel Modal */}
+      {showMyPanel && <MyPanel onClose={() => setShowMyPanel(false)} />}
 
     </div>
   );

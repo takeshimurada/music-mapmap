@@ -6,19 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "step2:normalize": "node scripts/normalize_dataset_v1.mjs",
+    "step2:validate": "node scripts/validate_dataset_v1.mjs",
+    "step2.5:enrich-genre": "node scripts/enrich_genre_v2.mjs",
+    "step3:enrich-country": "node scripts/enrich_country_v3.mjs",
+    "step3:report-country": "node scripts/report_step3_country.mjs",
+    "pipeline:full": "npm run step2:normalize && npm run step2.5:enrich-genre && npm run step3:enrich-country",
+    "pipeline:import": "docker cp out/albums_spotify_v3.json sonic_backend:/out/albums_spotify_v3.json && docker exec sonic_backend python scripts/import_albums_v3.py",
+    "pipeline:all": "npm run pipeline:full && npm run pipeline:import"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "zustand": "4.5.2",
-    "d3": "7.9.0",
-    "lucide-react": "0.460.0",
     "@deck.gl/core": "8.9.35",
     "@deck.gl/layers": "8.9.35",
     "@deck.gl/react": "8.9.35",
+    "@google/generative-ai": "^0.21.0",
+    "d3": "7.9.0",
     "deck.gl": "8.9.35",
-    "@google/generative-ai": "^0.21.0"
+    "dotenv": "^17.2.3",
+    "lucide-react": "0.460.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "zustand": "4.5.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

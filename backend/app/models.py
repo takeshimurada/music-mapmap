@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, DateTime, Date, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, DateTime, Date, Text, UniqueConstraint, BigInteger, Index, CheckConstraint
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+import uuid
 
 class Album(Base):
     __tablename__ = "albums"
@@ -79,3 +81,55 @@ class UserRating(Base):
     album = relationship("Album", back_populates="ratings")
 
     __table_args__ = (UniqueConstraint('user_id', 'album_id', name='_user_album_uc'),)
+
+# ========================================
+# Step 1: 개발용 유저 Like & 이벤트 로그 시스템
+# ========================================
+
+class DevUser(Base):
+    """개발용 유저 테이블 (Step 1 MVP)"""
+    __tablename__ = "dev_users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    likes = relationship("UserLike", back_populates="user")
+    events = relationship("UserEvent", back_populates="user")
+
+class UserLike(Base):
+    """유저 좋아요 테이블"""
+    __tablename__ = "user_likes"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("dev_users.id"), nullable=False)
+    entity_type = Column(String, nullable=False)
+    entity_id = Column(UUID(as_uuid=True), nullable=False)
+    liked_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("DevUser", back_populates="likes")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'entity_type', 'entity_id', name='_user_entity_like_uc'),
+        Index('idx_user_entity_type', 'user_id', 'entity_type'),
+        CheckConstraint("entity_type IN ('album', 'artist')", name='check_entity_type'),
+    )
+
+class UserEvent(Base):
+    """유저 이벤트 로그 테이블"""
+    __tablename__ = "user_events"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("dev_users.id"), nullable=False)
+    event_type = Column(String, nullable=False)
+    entity_type = Column(String, nullable=True)
+    entity_id = Column(UUID(as_uuid=True), nullable=True)
+    payload = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("DevUser", back_populates="events")
+
+    __table_args__ = (
+        Index('idx_user_created_at', 'user_id', 'created_at'),
+        Index('idx_event_type', 'event_type'),
+    )

@@ -60,3 +60,11 @@ export interface UserLog {
   memo: string;
   updatedAt: string;
 }
+
+// --- Step 1: Like System Types ---
+
+export interface LikeItem {
+  entity_type: string;
+  entity_id: string;
+  liked_at: string;
+}

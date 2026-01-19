@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { X, Sparkles, Music, Star, Search, Globe, ListMusic, MessageSquare, BookOpen, Users } from 'lucide-react';
-import { useStore } from '../../state/store';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { X, Sparkles, Music, Star, Search, Globe, ListMusic, MessageSquare, BookOpen, Users, Heart, ExternalLink } from 'lucide-react';
+import { useStore, BACKEND_URL, getAuthHeaders } from '../../state/store';
 import { getExtendedAlbumDetails } from '../../services/geminiService';
 import { Region, ExtendedAlbumData, UserLog } from '../../types';
 
@@ -46,6 +46,13 @@ export const DetailPanel: React.FC = () => {
   // User Log State
   const [userLog, setUserLog] = useState<UserLog>({ rating: 0, memo: '', updatedAt: '' });
   const [isLogDirty, setIsLogDirty] = useState(false);
+  
+  // Step 1: Like State
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  
+  // Step 1: 이벤트 로그 중복 방지 (앨범별로 1회만 기록)
+  const lastViewedAlbumRef = useRef<string | null>(null);
 
   const album = albums.find(a => a.id === selectedAlbumId);
 
@@ -58,11 +65,98 @@ export const DetailPanel: React.FC = () => {
     setLoading(false);
   }, [album]);
 
+  // Step 1: 이벤트 로그 함수
+  const logEvent = async (eventType: string, entityType?: string, entityId?: string, payload?: any) => {
+    try {
+      const headers = await getAuthHeaders();
+      await fetch(`${BACKEND_URL}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          event_type: eventType,
+          entity_type: entityType || null,
+          entity_id: entityId || null,
+          payload: payload || null,
+        }),
+      });
+    } catch (error) {
+      console.error('❌ Failed to log event:', error);
+    }
+  };
+
+  // Step 1: Like 토글 함수 + 자동 5점 평가
+  const handleLikeToggle = async () => {
+    if (!album || likeLoading) return;
+    
+    setLikeLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const method = isLiked ? 'DELETE' : 'POST';
+      
+      const response = await fetch(`${BACKEND_URL}/me/likes`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          entity_type: 'album',
+          entity_id: album.id,
+        }),
+      });
+      
+      if (response.ok) {
+        setIsLiked(!isLiked);
+        console.log(`${isLiked ? '💔' : '❤️'} Like toggled for album:`, album.id);
+        
+        // ⭐ 새로 Like할 때 자동으로 5점 평가 저장
+        if (!isLiked) {
+          const now = new Date().toISOString();
+          const autoLog = {
+            rating: 5,
+            memo: userLog.memo || '',
+            updatedAt: now
+          };
+          localStorage.setItem(`log-${album.id}`, JSON.stringify(autoLog));
+          setUserLog(autoLog);
+          console.log('⭐ Auto-rated 5 stars for liked album:', album.id);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to toggle like:', error);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  // Step 1: Play on Spotify 함수
+  const handlePlayOnSpotify = () => {
+    if (!album) return;
+    
+    // Step 1에서는 spotifyUrl이 없으므로 placeholder
+    // const spotifyUrl = (album as any).spotifyUrl;
+    const spotifyUrl = null; // TODO: Step 2에서 platform_ids로 제공 예정
+    
+    if (spotifyUrl) {
+      window.open(spotifyUrl, '_blank');
+      logEvent('open_on_platform', 'album', album.id, { platform: 'spotify', url: spotifyUrl });
+    } else {
+      console.warn('⚠️ Spotify URL not available for this album yet (Step 2 feature)');
+      alert('Spotify link will be available in Step 2!');
+      // 이벤트는 기록
+      logEvent('open_on_platform', 'album', album.id, { platform: 'spotify', url: null });
+    }
+  };
+
   // Load Album & Local Data
   useEffect(() => {
     setDetails(null);
     setLoading(false);
     setActiveTab('context');
+    setIsLiked(false); // Step 1: Like 상태 초기화
     
     if (album) {
       // Load user log from local storage
@@ -73,6 +167,13 @@ export const DetailPanel: React.FC = () => {
         setUserLog({ rating: 0, memo: '', updatedAt: '' });
       }
       setIsLogDirty(false);
+      
+      // Step 1: view_album 이벤트 로깅 (중복 방지)
+      if (lastViewedAlbumRef.current !== album.id) {
+        lastViewedAlbumRef.current = album.id;
+        logEvent('view_album', 'album', album.id);
+        console.log('👀 Logged view_album event for:', album.id);
+      }
       
       // 자동으로 AI 분석 생성
       handleResearch();
@@ -137,8 +238,78 @@ export const DetailPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* 1.5. Action Buttons */}
+      <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/30 space-y-3">
+        
+        {/* 첫 번째 줄: Like + 듣고싶어요 */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLikeToggle();
+            }}
+            disabled={likeLoading}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
+              isLiked 
+                ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white hover:from-pink-600 hover:to-red-600 shadow-pink-500/30' 
+                : 'bg-slate-800/50 border-2 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-pink-500/50'
+            } ${likeLoading ? 'opacity-50 cursor-wait' : ''}`}
+          >
+            <Heart 
+              size={18} 
+              fill={isLiked ? 'currentColor' : 'none'} 
+              strokeWidth={2.5}
+            />
+            <span>{isLiked ? '❤️ Liked' : 'Like'}</span>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isLiked) {
+                handleLikeToggle();
+              }
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
+              isLiked
+                ? 'bg-purple-500/20 border-2 border-purple-500 text-purple-400 cursor-default'
+                : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-purple-500/30'
+            }`}
+          >
+            <Star size={18} fill={isLiked ? 'currentColor' : 'none'} strokeWidth={2.5} />
+            <span>{isLiked ? '✅ 담았어요' : '듣고싶어요'}</span>
+          </button>
+        </div>
+        
+        {/* 두 번째 줄: Spotify + YouTube */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePlayOnSpotify();
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg shadow-green-600/20"
+          >
+            <ExternalLink size={16} />
+            <span>Spotify</span>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const query = encodeURIComponent(`${album.artist} ${album.title}`);
+              window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg shadow-red-600/20"
+          >
+            <ExternalLink size={16} />
+            <span>YouTube</span>
+          </button>
+        </div>
+      </div>
+
       {/* 2. Navigation Tabs */}
-      <div className="flex items-center border-b border-slate-800 px-2">
+      <div className="flex items-center border-b border-slate-800">
         <TabButton id="context" label="Context" icon={BookOpen} active={activeTab} set={setActiveTab} />
         <TabButton id="tracks" label="Tracks" icon={ListMusic} active={activeTab} set={setActiveTab} />
         <TabButton id="credits" label="Credits" icon={Users} active={activeTab} set={setActiveTab} />
@@ -343,14 +514,14 @@ export const DetailPanel: React.FC = () => {
 const TabButton = ({ id, label, icon: Icon, active, set }: { id: Tab, label: string, icon: any, active: Tab, set: (t: Tab) => void }) => (
   <button
     onClick={() => set(id)}
-    className={`flex-1 py-4 flex items-center justify-center gap-1.5 text-[10px] font-medium uppercase tracking-wider border-b-2 transition-all duration-300 ${
+    className={`flex-1 py-5 flex flex-col items-center justify-center gap-2 text-xs font-bold transition-all duration-300 border-b-3 group ${
       active === id 
-        ? 'border-accent text-white bg-white/5' 
-        : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
+        ? 'border-accent text-accent bg-accent/10' 
+        : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5 hover:border-slate-700'
     }`}
   >
-    <Icon size={13} />
-    <span className="hidden sm:inline">{label}</span>
+    <Icon size={20} className={`${active === id ? 'text-accent' : 'text-slate-600 group-hover:text-slate-400'} transition-colors`} />
+    <span className="text-[11px] uppercase tracking-wide">{label}</span>
   </button>
 );
 

@@ -84,8 +84,8 @@ let REGION_Y_RANGES: Record<string, { min: number; max: number; center: number }
   'Latin America': { min: 0.08, max: 0.15, center: 0.115 },
   'South America': { min: 0.08, max: 0.15, center: 0.115 },
   'Caribbean': { min: 0.15, max: 0.20, center: 0.175 },
-  'North America': { min: 0.20, max: 0.55, center: 0.375 },
-  'Europe': { min: 0.55, max: 0.85, center: 0.70 },
+  'North America': { min: 0.20, max: 0.53, center: 0.365 },  // 0.55 → 0.53 (빈 공간 제거)
+  'Europe': { min: 0.53, max: 0.85, center: 0.69 },           // 0.55 → 0.53 (빈 공간 제거)
   'Asia': { min: 0.85, max: 0.93, center: 0.89 },
   'Oceania': { min: 0.93, max: 1.00, center: 0.965 },
 };
@@ -130,18 +130,18 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'Nashville': 0.30,
   'Chicago': 0.35,              // 중부
   'Detroit': 0.36,
-  'New York': 0.48,             // 동부, 유럽에 가까움
-  'Boston': 0.50,               // 동부, 유럽에 가까움
+  'New York': 0.49,             // 동부, 유럽에 가까움 (0.48 → 0.49)
+  'Boston': 0.52,               // 동부, 유럽에 가까움 (0.50 → 0.52)
   'Los Angeles': 0.40,          // 서부
-  'San Francisco': 0.42,        // 서부
-  'Seattle': 0.45,              // 서부 북부
+  'San Francisco': 0.43,        // 서부 (0.42 → 0.43)
+  'Seattle': 0.48,              // 서부 북부 (0.45 → 0.48)
   
-  // Europe (0.55-0.85) - 데이터 많음, 넓은 공간
-  'Iceland': 0.56,              // 북미에 가까움
-  'Ireland': 0.59,              // 대서양 가까움
-  'United Kingdom': 0.62,       // 대서양 가까움
-  'UK': 0.62,
-  'England': 0.62,
+  // Europe (0.53-0.85) - 데이터 많음, 넓은 공간
+  'Iceland': 0.54,              // 북미에 가까움 (0.56 → 0.54)
+  'Ireland': 0.56,              // 대서양 가까움 (0.59 → 0.56)
+  'United Kingdom': 0.58,       // 대서양 가까움 (0.62 → 0.58)
+  'UK': 0.58,
+  'England': 0.58,
   'Portugal': 0.65,
   'Spain': 0.66,
   'France': 0.68,

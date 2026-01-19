@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, ArrowUpRight, Music, Trash2 } from 'lucide-react';
-import { useStore } from '../../state/store';
+import { useStore, BACKEND_URL, getAuthHeaders } from '../../state/store';
 import { Album } from '../../types';
 
 export const SearchBar: React.FC = () => {
@@ -60,8 +60,34 @@ export const SearchBar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Step 1: 검색 이벤트 로깅
+  const logSearchEvent = async (query: string) => {
+    try {
+      const headers = await getAuthHeaders();
+      await fetch(`${BACKEND_URL}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          event_type: 'search',
+          entity_type: null,
+          entity_id: null,
+          payload: { query },
+        }),
+      });
+      console.log('🔍 Search event logged:', query);
+    } catch (error) {
+      console.error('❌ Failed to log search event:', error);
+    }
+  };
+
   const handleSelectAlbum = (album: Album) => {
     console.log('🎵 Album selected from dropdown:', album.title);
+    
+    // Step 1: 검색 이벤트 로깅
+    logSearchEvent(album.title);
     
     // Save to Recent
     const updated = [album.title, ...recentSearches.filter(s => s !== album.title)].slice(0, 5);
@@ -77,6 +103,9 @@ export const SearchBar: React.FC = () => {
 
   const handleSelectArtist = (artist: string) => {
     console.log('🎤 Artist selected from dropdown:', artist);
+    
+    // Step 1: 검색 이벤트 로깅
+    logSearchEvent(artist);
     
     // Save to Recent
     const updated = [artist, ...recentSearches.filter(s => s !== artist)].slice(0, 5);

@@ -57,6 +57,63 @@ const getSearchMatchedIds = (state: AppState): string[] => {
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
+// ========================================
+// Step 1: 개발용 User ID 관리
+// ========================================
+const DEV_USER_ID_KEY = 'devUserId';
+let cachedDevUserId: string | null = null;
+
+/**
+ * 개발용 유저 ID를 확보합니다 (localStorage + 캐시)
+ * - localStorage에 없으면 백엔드에 생성 요청
+ * - 실패 시 경고만 출력하고 빈 문자열 반환 (앱 실행 중단 방지)
+ */
+async function ensureDevUserId(): Promise<string> {
+  // 1. 캐시 확인
+  if (cachedDevUserId) return cachedDevUserId;
+  
+  // 2. localStorage 확인
+  const stored = localStorage.getItem(DEV_USER_ID_KEY);
+  if (stored) {
+    cachedDevUserId = stored;
+    return stored;
+  }
+  
+  // 3. 백엔드에 새 유저 생성 요청
+  try {
+    console.log('🔐 Creating dev user...');
+    const response = await fetch(`${BACKEND_URL}/dev/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to create dev user: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const userId = data.user_id;
+    
+    localStorage.setItem(DEV_USER_ID_KEY, userId);
+    cachedDevUserId = userId;
+    console.log('✅ Dev user created:', userId);
+    
+    return userId;
+  } catch (error) {
+    console.error('❌ Failed to create dev user:', error);
+    console.warn('⚠️ Continuing without authentication (Like/Event features may not work)');
+    return '';
+  }
+}
+
+/**
+ * X-User-Id 헤더를 포함한 fetch 옵션 반환
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const userId = await ensureDevUserId();
+  return userId ? { 'X-User-Id': userId } : {};
+}
+
 // 백엔드 응답을 프론트엔드 타입으로 변환
 const transformAlbumData = (backendAlbum: any): Album => {
   return {
@@ -89,6 +146,12 @@ export const useStore = create<AppState>((set, get) => ({
   loadAlbums: async () => {
     try {
       set({ loading: true });
+      
+      // Step 1: 개발용 유저 ID 확보 (에러가 나도 albums 로딩은 계속)
+      await ensureDevUserId().catch(err => {
+        console.warn('⚠️ Dev user initialization failed, but continuing:', err);
+      });
+      
       console.log('🔄 Loading albums from:', `${BACKEND_URL}/albums?limit=2000`);
       
       const response = await fetch(`${BACKEND_URL}/albums?limit=2000`);
@@ -165,3 +228,8 @@ export const useStore = create<AppState>((set, get) => ({
     viewport: typeof vp === 'function' ? vp(state.viewport) : vp
   })),
 }));
+
+// ========================================
+// Step 1: Export 헬퍼 함수 (DetailPanel 등에서 사용)
+// ========================================
+export { BACKEND_URL, ensureDevUserId, getAuthHeaders };
