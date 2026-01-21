@@ -152,9 +152,9 @@ export const useStore = create<AppState>((set, get) => ({
         console.warn('⚠️ Dev user initialization failed, but continuing:', err);
       });
       
-      console.log('🔄 Loading albums from:', `${BACKEND_URL}/albums?limit=2000`);
+      console.log('🔄 Loading albums from:', `${BACKEND_URL}/albums?limit=50000`);
       
-      const response = await fetch(`${BACKEND_URL}/albums?limit=2000`);
+      const response = await fetch(`${BACKEND_URL}/albums?limit=50000`);
       
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');

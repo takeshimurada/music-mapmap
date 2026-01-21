@@ -15,6 +15,7 @@ import path from "path";
 
 const INPUT_FILE = path.resolve("./out/albums_spotify_v0.json");
 const OUTPUT_FILE = path.resolve("./out/album_credits.json");
+const TOP_PERCENT = Number(process.env.CREDITS_TOP_PERCENT || "0.3");
 
 const MUSICBRAINZ_API = "https://musicbrainz.org/ws/2";
 const USER_AGENT = "MusicMapMap/1.0.0 (https://github.com/yourproject)"; // 실제 프로젝트 URL로 변경
@@ -211,6 +212,16 @@ async function main() {
   
   console.log(`📥 앨범 데이터 로드: ${albums.length}개`);
 
+  // popularity 상위 n%만 대상으로 축소
+  const popularityValues = albums
+    .map(a => Number(a.popularity))
+    .filter(v => !Number.isNaN(v))
+    .sort((a, b) => b - a);
+  const cutoffIndex = Math.floor(popularityValues.length * TOP_PERCENT);
+  const cutoff = popularityValues[cutoffIndex] ?? 0;
+  const targetAlbums = albums.filter(a => (Number(a.popularity) || 0) >= cutoff);
+  console.log(`🎯 크레딧 대상: 상위 ${(TOP_PERCENT * 100).toFixed(0)}% (cutoff=${cutoff}) → ${targetAlbums.length}개`);
+
   // 2. 기존 데이터 로드 (있으면)
   let existingData = {};
   if (fs.existsSync(OUTPUT_FILE)) {
@@ -229,8 +240,8 @@ async function main() {
   let failed = 0;
   let totalCredits = 0;
 
-  for (let i = 0; i < albums.length; i++) {
-    const album = albums[i];
+  for (let i = 0; i < targetAlbums.length; i++) {
+    const album = targetAlbums[i];
     const albumId = album.spotify?.albumId || album.albumId;
     
     if (!albumId) {
@@ -241,13 +252,13 @@ async function main() {
     // 이미 처리한 앨범
     if (existingData[albumId]) {
       if (i % 100 === 0) {
-        console.log(`  ⏭️  [${i + 1}/${albums.length}] 이미 처리됨`);
+        console.log(`  ⏭️  [${i + 1}/${targetAlbums.length}] 이미 처리됨`);
       }
       skipped++;
       continue;
     }
 
-    console.log(`\n[${i + 1}/${albums.length}] 처리 중: ${album.title} - ${album.artistName}`);
+    console.log(`\n[${i + 1}/${targetAlbums.length}] 처리 중: ${album.title} - ${album.artistName}`);
 
     try {
       // MusicBrainz에서 앨범 검색
@@ -326,7 +337,7 @@ async function main() {
   console.log('✅ 크레딧 정보 수집 완료!');
   console.log('='.repeat(60));
   console.log(`📊 통계:`);
-  console.log(`   • 총 앨범: ${albums.length}개`);
+  console.log(`   • 총 앨범: ${targetAlbums.length}개 (상위 ${(TOP_PERCENT * 100).toFixed(0)}%)`);
   console.log(`   • 성공: ${processed}개`);
   console.log(`   • 이미 존재: ${skipped}개`);
   console.log(`   • 실패/없음: ${failed}개`);

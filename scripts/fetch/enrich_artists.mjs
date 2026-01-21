@@ -4,6 +4,7 @@
  * 기능:
  * - v0.json에서 아티스트 ID 추출
  * - Spotify API로 아티스트 상세 정보 수집
+ * - MusicBrainz API로 아티스트 출신 국가 수집
  * - 결과를 artists.json으로 저장
  * 
  * Usage:
@@ -26,6 +27,7 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const INPUT_FILE = path.resolve("./out/albums_spotify_v0.json");
 const OUTPUT_FILE = path.resolve("./out/artists_spotify.json");
+const MB_CACHE_FILE = path.resolve("./out/mb_cache.json");
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -112,6 +114,107 @@ async function getMultipleArtists(token, artistIds) {
   return fetchJson(url, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+// ============================================
+// MusicBrainz - 아티스트 국가 조회
+// ============================================
+
+function loadMbCache() {
+  if (!fs.existsSync(MB_CACHE_FILE)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(MB_CACHE_FILE, 'utf-8'));
+  } catch (e) {
+    console.warn('⚠️ MusicBrainz 캐시 로드 실패, 새로 시작');
+    return {};
+  }
+}
+
+function saveMbCache(cache) {
+  fs.writeFileSync(MB_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
+}
+
+function cacheKey(artistName) {
+  return artistName?.trim().toLowerCase();
+}
+
+async function queryMusicBrainzCountry(artistName, mbCache) {
+  const key = cacheKey(artistName);
+  
+  // 캐시 확인
+  if (key && mbCache[key]) {
+    const cached = mbCache[key];
+    if (cached.notFound) {
+      return null;
+    }
+    if (cached.countryCode) {
+      return cached.countryCode;
+    }
+  }
+  
+  try {
+    const encodedName = encodeURIComponent(artistName);
+    const url = `https://musicbrainz.org/ws/2/artist?query=artist:${encodedName}&fmt=json&limit=3`;
+    
+    const headers = {
+      'User-Agent': 'MusicMapProject/1.0.0 (https://github.com/yourusername/music-map)',
+    };
+    
+    await sleep(1100); // Rate limit: ~1 req/sec
+    
+    const response = await fetchWithTimeout(url, { headers }, 15000);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.artists || data.artists.length === 0) {
+      if (key) {
+        mbCache[key] = { countryCode: null, notFound: true, fetchedAt: new Date().toISOString() };
+        saveMbCache(mbCache);
+      }
+      return null;
+    }
+    
+    // 최적 후보 선택 (정확한 이름 매칭 우선)
+    const best = data.artists
+      .map(artist => ({
+        ...artist,
+        nameMatch: artist.name.toLowerCase().replace(/\s+/g, '') === artistName.toLowerCase().replace(/\s+/g, ''),
+      }))
+      .sort((a, b) => {
+        if (a.nameMatch && !b.nameMatch) return -1;
+        if (!a.nameMatch && b.nameMatch) return 1;
+        return (b.score || 0) - (a.score || 0);
+      })[0];
+    
+    // country 추출 (ISO 2-letter code)
+    let countryCode = null;
+    if (best.country) {
+      countryCode = best.country.toUpperCase();
+    } else if (best.area && best['iso-3166-1-codes'] && best['iso-3166-1-codes'].length > 0) {
+      countryCode = best['iso-3166-1-codes'][0].toUpperCase();
+    }
+    
+    // 캐시 저장
+    if (key) {
+      mbCache[key] = {
+        countryCode,
+        artistName: best.name,
+        fetchedAt: new Date().toISOString()
+      };
+      saveMbCache(mbCache);
+    }
+    
+    return countryCode;
+  } catch (error) {
+    console.warn(`  ⚠️ MusicBrainz 조회 실패 (${artistName}): ${error.message}`);
+    return null;
+  }
+}
+
 async function main() {
   console.log('\n🎤 아티스트 정보 수집 시작\n');
   console.log('=' * 60);
@@ -156,12 +259,17 @@ async function main() {
     }
   }
 
-  // 5. 아티스트 정보 수집
+  // 5. MusicBrainz 캐시 로드
+  const mbCache = loadMbCache();
+  console.log(`🗄️  MusicBrainz 캐시: ${Object.keys(mbCache).length}개\n`);
+
+  // 6. 아티스트 정보 수집
   const artistIdsArray = Array.from(artistIds);
   const totalArtists = artistIdsArray.length;
   let collected = 0;
   let skipped = 0;
   let failed = 0;
+  let countryFound = 0;
 
   // 50개씩 배치 처리
   const batchSize = 50;
@@ -189,6 +297,7 @@ async function main() {
       if (response.artists) {
         for (const artist of response.artists) {
           if (artist) {
+            // Spotify 기본 정보
             existingArtists[artist.id] = {
               id: artist.id,
               name: artist.name,
@@ -197,12 +306,26 @@ async function main() {
               followers: artist.followers?.total ?? null,
               image_url: artist.images?.[0]?.url || null,
               spotify_url: artist.external_urls?.spotify || null,
+              country_code: null,  // 🌍 MusicBrainz에서 채울 예정
               fetched_at: new Date().toISOString()
             };
             collected++;
           }
         }
-        console.log(`  ✅ 수집 완료: ${response.artists.filter(a => a).length}개`);
+        console.log(`  ✅ Spotify 수집 완료: ${response.artists.filter(a => a).length}개`);
+        
+        // 🌍 MusicBrainz로 국가 정보 보강
+        console.log(`  🌍 MusicBrainz 국가 조회 중...`);
+        for (const artist of response.artists) {
+          if (artist && existingArtists[artist.id]) {
+            const countryCode = await queryMusicBrainzCountry(artist.name, mbCache);
+            if (countryCode) {
+              existingArtists[artist.id].country_code = countryCode;
+              countryFound++;
+            }
+          }
+        }
+        console.log(`  ✅ 국가 정보: ${response.artists.filter(a => a && existingArtists[a.id]?.country_code).length}개 발견`);
       }
     } catch (error) {
       console.error(`  ❌ 배치 실패: ${error.message}`);
@@ -242,13 +365,21 @@ async function main() {
 
   console.log('\n' + '='.repeat(60));
   console.log('✅ 아티스트 정보 수집 완료!');
-  console.log('=' * 60);
+  console.log('='.repeat(60));
   console.log(`📊 통계:`);
   console.log(`   • 총 아티스트: ${totalArtists}개`);
   console.log(`   • 새로 수집: ${collected}개`);
   console.log(`   • 이미 존재: ${skipped}개`);
   console.log(`   • 실패: ${failed}개`);
   console.log(`   • 최종 DB: ${Object.keys(existingArtists).length}개`);
+  
+  // 국가 정보 통계
+  const artistsWithCountry = Object.values(existingArtists).filter(a => a.country_code).length;
+  const countryPercentage = ((artistsWithCountry / Object.keys(existingArtists).length) * 100).toFixed(1);
+  console.log(`\n🌍 국가 정보:`);
+  console.log(`   • 국가 있음: ${artistsWithCountry}/${Object.keys(existingArtists).length} (${countryPercentage}%)`);
+  console.log(`   • 이번에 발견: ${countryFound}개`);
+  
   console.log(`\n💾 저장 위치: ${OUTPUT_FILE}`);
 }
 

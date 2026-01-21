@@ -95,7 +95,8 @@ async def import_creators():
             bio=None,
             image_url=artist_data.get('image_url'),
             kind='person',
-            primary_role_tag='artist'
+            primary_role_tag='artist',
+            country_code=artist_data.get('country_code')  # 🌍 MusicBrainz에서 수집한 국가 코드
         ))
         new_profiles.append(CreatorSpotifyProfile(
             creator_id=creator_id,
@@ -105,10 +106,15 @@ async def import_creators():
             spotify_url=artist_data.get('spotify_url')
         ))
 
+    # 국가 정보 통계
+    country_count = sum(1 for c in new_creators if c.country_code)
+    country_percentage = (country_count / len(new_creators) * 100) if len(new_creators) > 0 else 0
+    
     print(f"📊 임포트 분석:")
     print(f"   • 전체: {len(artists_data)}개")
     print(f"   • 이미 존재: {skipped}개")
-    print(f"   • 새로 추가: {len(new_creators)}개\n")
+    print(f"   • 새로 추가: {len(new_creators)}개")
+    print(f"   • 국가 정보: {country_count}/{len(new_creators)} ({country_percentage:.1f}%)\n")
 
     if len(new_creators) == 0:
         print("✅ 추가할 creator가 없습니다.")

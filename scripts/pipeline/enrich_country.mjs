@@ -17,6 +17,8 @@ dotenv.config();
 const INPUT_FILE = path.resolve("./out/albums_spotify_v2.json"); // v2 (genre enriched) 입력
 const OUTPUT_FILE = path.resolve("./out/albums_spotify_v3.json"); // v3 (country enriched) 출력
 const CANONICAL_COUNTRY_FIELD = "country"; // 코드베이스가 읽는 필드명
+const MB_CACHE_FILE = path.resolve("./out/mb_cache.json");
+const DISCOGS_CACHE_FILE = path.resolve("./out/discogs_cache.json");
 
 const DISCOGS_TOKEN = process.env.DISCOGS_TOKEN || null;
 
@@ -26,6 +28,42 @@ const DISCOGS_TOKEN = process.env.DISCOGS_TOKEN || null;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function cacheKey(artistName) {
+  return artistName?.trim().toLowerCase();
+}
+
+function loadMbCache() {
+  if (!fs.existsSync(MB_CACHE_FILE)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(MB_CACHE_FILE, 'utf-8'));
+  } catch (e) {
+    console.warn('⚠️ MB 캐시 로드 실패, 새로 시작');
+    return {};
+  }
+}
+
+function saveMbCache(cache) {
+  fs.writeFileSync(MB_CACHE_FILE, JSON.stringify(cache, null, 2));
+}
+
+function loadDiscogsCache() {
+  if (!fs.existsSync(DISCOGS_CACHE_FILE)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(DISCOGS_CACHE_FILE, 'utf-8'));
+  } catch (e) {
+    console.warn('⚠️ Discogs 캐시 로드 실패, 새로 시작');
+    return {};
+  }
+}
+
+function saveDiscogsCache(cache) {
+  fs.writeFileSync(DISCOGS_CACHE_FILE, JSON.stringify(cache, null, 2));
 }
 
 async function fetchWithRetry(url, options = {}, retry = 0) {
@@ -64,12 +102,23 @@ async function fetchWithRetry(url, options = {}, retry = 0) {
 // MusicBrainz API (1차 보강)
 // ============================================
 
-const mbCache = new Map();
+const mbCache = loadMbCache();
 
 async function queryMusicBrainz(artistName) {
-  // 캐시 확인
-  if (mbCache.has(artistName)) {
-    return mbCache.get(artistName);
+  const key = cacheKey(artistName);
+  if (key && mbCache[key]) {
+    const cached = mbCache[key];
+    if (cached.notFound) {
+      return null;
+    }
+    if (cached.countryName || cached.countryCode) {
+      return {
+        countryName: cached.countryName || mapCountryCodeToName(cached.countryCode),
+        countryCode: cached.countryCode || mapCountryNameToCode(cached.countryName),
+        source: 'musicbrainz',
+        type: 'artist_origin',
+      };
+    }
   }
   
   try {
@@ -85,7 +134,10 @@ async function queryMusicBrainz(artistName) {
     const data = await fetchWithRetry(url, { headers });
     
     if (!data.artists || data.artists.length === 0) {
-      mbCache.set(artistName, null);
+      if (key) {
+        mbCache[key] = { genres: [], tags: [], countryName: null, countryCode: null, notFound: true, fetchedAt: new Date().toISOString() };
+        saveMbCache(mbCache);
+      }
       return null;
     }
     
@@ -131,12 +183,21 @@ async function queryMusicBrainz(artistName) {
       type: 'artist_origin',
     };
     
-    mbCache.set(artistName, result);
+    if (key) {
+      const existing = mbCache[key] || {};
+      mbCache[key] = {
+        ...existing,
+        countryName,
+        countryCode,
+        notFound: false,
+        fetchedAt: new Date().toISOString()
+      };
+      saveMbCache(mbCache);
+    }
     return result;
     
   } catch (error) {
     console.warn(`⚠️ MusicBrainz failed for "${artistName}":`, error.message);
-    mbCache.set(artistName, null);
     return null;
   }
 }
@@ -145,7 +206,7 @@ async function queryMusicBrainz(artistName) {
 // Discogs API (2차 보강)
 // ============================================
 
-const discogsCache = new Map();
+const discogsCache = loadDiscogsCache();
 
 async function queryDiscogs(artistName, albumTitle) {
   if (!DISCOGS_TOKEN) {
@@ -155,8 +216,8 @@ async function queryDiscogs(artistName, albumTitle) {
   const cacheKey = `${artistName}||${albumTitle}`;
   
   // 캐시 확인
-  if (discogsCache.has(cacheKey)) {
-    return discogsCache.get(cacheKey);
+  if (discogsCache[cacheKey]) {
+    return discogsCache[cacheKey];
   }
   
   try {
@@ -168,7 +229,8 @@ async function queryDiscogs(artistName, albumTitle) {
     const data = await fetchWithRetry(url);
     
     if (!data.results || data.results.length === 0) {
-      discogsCache.set(cacheKey, null);
+      discogsCache[cacheKey] = { countryName: null, countryCode: null, source: 'discogs', type: 'release_country', notFound: true, fetchedAt: new Date().toISOString() };
+      saveDiscogsCache(discogsCache);
       return null;
     }
     
@@ -180,14 +242,16 @@ async function queryDiscogs(artistName, albumTitle) {
     });
     
     if (candidates.length === 0) {
-      discogsCache.set(cacheKey, null);
+      discogsCache[cacheKey] = { countryName: null, countryCode: null, source: 'discogs', type: 'release_country', notFound: true, fetchedAt: new Date().toISOString() };
+      saveDiscogsCache(discogsCache);
       return null;
     }
     
     const best = candidates[0];
     
     if (!best.country) {
-      discogsCache.set(cacheKey, null);
+      discogsCache[cacheKey] = { countryName: null, countryCode: null, source: 'discogs', type: 'release_country', notFound: true, fetchedAt: new Date().toISOString() };
+      saveDiscogsCache(discogsCache);
       return null;
     }
     
@@ -198,12 +262,12 @@ async function queryDiscogs(artistName, albumTitle) {
       type: 'release_country',
     };
     
-    discogsCache.set(cacheKey, result);
+    discogsCache[cacheKey] = { ...result, notFound: false, fetchedAt: new Date().toISOString() };
+    saveDiscogsCache(discogsCache);
     return result;
     
   } catch (error) {
     console.warn(`⚠️ Discogs failed for "${artistName} - ${albumTitle}":`, error.message);
-    discogsCache.set(cacheKey, null);
     return null;
   }
 }

@@ -63,6 +63,7 @@ class Creator(Base):
     image_url = Column(String, nullable=True)
     kind = Column(CreatorKind, nullable=False, server_default="person")
     primary_role_tag = Column(String, nullable=True)
+    country_code = Column(String, nullable=True)  # 🌍 아티스트 출신 국가 (ISO 2-letter code)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

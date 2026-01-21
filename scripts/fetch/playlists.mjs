@@ -15,6 +15,7 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const OUT_DIR = path.resolve("./out");
 const OUT_FILE = path.join(OUT_DIR, "albums_spotify_v0.json");
+const ARTIST_CACHE_FILE = path.join(OUT_DIR, "artist_cache.json");
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function sleep(ms) {
@@ -47,6 +48,30 @@ async function getAccessToken() {
     body,
   });
   return json.access_token;
+}
+
+function loadArtistCache() {
+  if (!fs.existsSync(ARTIST_CACHE_FILE)) {
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(ARTIST_CACHE_FILE, "utf-8"));
+  } catch (e) {
+    console.warn("⚠️ Failed to load artist cache, starting fresh");
+    return {};
+  }
+}
+
+function saveArtistCache(cache) {
+  fs.writeFileSync(ARTIST_CACHE_FILE, JSON.stringify(cache, null, 2), "utf-8");
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 // Spotify Featured Playlists API
@@ -91,10 +116,23 @@ async function getPlaylistTracks(token, playlistId) {
   }
 }
 
-// 아티스트 정보 가져오기
-async function getArtist(token, artistId) {
-  const url = `https://api.spotify.com/v1/artists/${artistId}`;
-  return fetchJson(url, { headers: { Authorization: `Bearer ${token}` } });
+// 아티스트 정보 배치 가져오기 (최대 50개)
+async function getArtistsBatch(token, artistIds) {
+  if (!artistIds.length) return {};
+  const artistsMap = {};
+  const chunks = chunkArray(artistIds, 50);
+  for (const chunk of chunks) {
+    const url = `https://api.spotify.com/v1/artists?ids=${chunk.join(",")}`;
+    const json = await fetchJson(url, { headers: { Authorization: `Bearer ${token}` } });
+    const artists = json?.artists || [];
+    for (const artist of artists) {
+      if (artist?.id) {
+        artistsMap[artist.id] = artist;
+      }
+    }
+    await sleep(120);
+  }
+  return artistsMap;
 }
 
 function normalizeAlbum(album, artist) {
@@ -132,6 +170,7 @@ async function main() {
   
   const seenAlbumIds = new Set();
   let out = [];
+  const artistCache = loadArtistCache();
 
   // 기존 v0 파일 로드 (append 모드)
   if (fs.existsSync(OUT_FILE)) {
@@ -151,6 +190,7 @@ async function main() {
   }
 
   console.log(`🎯 Target: ${TARGET_ALBUMS} albums`);
+  console.log(`🎤 Cached artists: ${Object.keys(artistCache).length}`);
   
   // 1️⃣ New Releases로 최신 앨범 수집
   console.log(`\n📀 Fetching new releases...`);
@@ -160,6 +200,33 @@ async function main() {
     const newReleases = await getNewReleases(token, offset);
     console.log(`   Found ${newReleases.length} new releases (offset=${offset})`);
     
+    const idsToFetch = [];
+    for (const album of newReleases) {
+      if (out.length >= TARGET_ALBUMS) break;
+      if (!album || !album.id) continue;
+      if (seenAlbumIds.has(album.id)) continue;
+
+      const artistName = album.artists?.[0]?.name;
+      if (artistName && artistName.toLowerCase().includes("various artists")) {
+        continue;
+      }
+
+      const artistId = album.artists?.[0]?.id;
+      if (!artistId) continue;
+      if (!artistCache[artistId] && !idsToFetch.includes(artistId)) {
+        idsToFetch.push(artistId);
+      }
+    }
+
+    if (idsToFetch.length > 0) {
+      console.log(`   🎤 Batch artists: ${idsToFetch.length}`);
+      const batchArtists = await getArtistsBatch(token, idsToFetch);
+      for (const [id, artist] of Object.entries(batchArtists)) {
+        artistCache[id] = artist;
+      }
+      saveArtistCache(artistCache);
+    }
+
     for (const album of newReleases) {
       if (out.length >= TARGET_ALBUMS) break;
       if (!album || !album.id) continue;
@@ -173,13 +240,8 @@ async function main() {
       const artistId = album.artists?.[0]?.id;
       if (!artistId) continue;
 
-      let artist;
-      try {
-        artist = await getArtist(token, artistId);
-        await sleep(100);
-      } catch (e) {
-        continue;
-      }
+      const artist = artistCache[artistId];
+      if (!artist) continue;
 
       if (!artist || !artist.genres || artist.genres.length === 0) {
         continue; // 장르 정보 없으면 스킵
@@ -214,6 +276,7 @@ async function main() {
       processedPlaylists++;
 
       const tracks = await getPlaylistTracks(token, playlist.id);
+      const idsToFetch = [];
       
       for (const item of tracks) {
         if (out.length >= TARGET_ALBUMS) break;
@@ -231,15 +294,38 @@ async function main() {
 
         const artistId = album.artists?.[0]?.id;
         if (!artistId) continue;
+        if (!artistCache[artistId] && !idsToFetch.includes(artistId)) {
+          idsToFetch.push(artistId);
+        }
+      }
 
-        let artist;
-        try {
-          artist = await getArtist(token, artistId);
-          await sleep(100);
-        } catch (e) {
+      if (idsToFetch.length > 0) {
+        console.log(`     🎤 Batch artists: ${idsToFetch.length}`);
+        const batchArtists = await getArtistsBatch(token, idsToFetch);
+        for (const [id, artist] of Object.entries(batchArtists)) {
+          artistCache[id] = artist;
+        }
+        saveArtistCache(artistCache);
+      }
+
+      for (const item of tracks) {
+        if (out.length >= TARGET_ALBUMS) break;
+
+        const track = item.track;
+        if (!track || !track.album || !track.album.id) continue;
+
+        const album = track.album;
+        if (seenAlbumIds.has(album.id)) continue;
+
+        const artistName = album.artists?.[0]?.name;
+        if (artistName && artistName.toLowerCase().includes("various artists")) {
           continue;
         }
 
+        const artistId = album.artists?.[0]?.id;
+        if (!artistId) continue;
+
+        const artist = artistCache[artistId];
         if (!artist) continue;
 
         const releaseYear = album.release_date
@@ -286,6 +372,7 @@ async function main() {
     ),
     "utf-8"
   );
+  saveArtistCache(artistCache);
 
   console.log(`\n✅ Saved: ${OUT_FILE}`);
   console.log(`📊 Total albums: ${out.length}`);
