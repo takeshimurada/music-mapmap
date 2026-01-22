@@ -184,7 +184,7 @@ async def get_map_points(
         .join(MapNode, AlbumGroup.album_group_id == MapNode.album_group_id)
         .where(AlbumGroup.original_year >= yearFrom, AlbumGroup.original_year <= yearTo)
         .order_by(AlbumGroup.created_at.desc())
-        .limit(5000)
+        .limit(50000)
     )
     result = await db.execute(stmt)
     points = []
@@ -203,7 +203,7 @@ async def get_map_points(
 
 @app.get("/albums", response_model=APIResponse)
 async def get_all_albums(
-    limit: int = 5000,
+    limit: int = 50000,
     offset: int = 0,
     db: AsyncSession = Depends(get_db)
 ):
@@ -229,6 +229,7 @@ async def get_all_albums(
             country=ag.country_code,
             cover_url=ag.cover_url,
             popularity=ag.popularity or 0.0,
+            release_date=ag.earliest_release_date,
             created_at=ag.created_at
         ))
     return APIResponse(data=albums)
@@ -258,6 +259,7 @@ async def search_albums(q: str, db: AsyncSession = Depends(get_db)):
             country=ag.country_code,
             cover_url=ag.cover_url,
             popularity=ag.popularity or 0.0,
+            release_date=ag.earliest_release_date,
             created_at=ag.created_at
         ))
     return APIResponse(data=albums)
@@ -285,6 +287,7 @@ async def get_album_detail(album_id: str, db: AsyncSession = Depends(get_db)):
         country=ag.country_code,
         cover_url=ag.cover_url,
         popularity=ag.popularity or 0.0,
+        release_date=ag.earliest_release_date,
         created_at=ag.created_at
     ))
 
@@ -312,6 +315,7 @@ async def get_album_group_detail(album_id: str, db: AsyncSession = Depends(get_d
         country=ag.country_code,
         cover_url=ag.cover_url,
         popularity=ag.popularity or 0.0,
+        release_date=ag.earliest_release_date,
         created_at=ag.created_at
     )
 

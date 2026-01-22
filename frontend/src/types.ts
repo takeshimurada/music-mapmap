@@ -6,6 +6,7 @@ export interface Album {
   title: string;
   artist: string;
   year: number;
+  releaseDate?: string; // ISO date string (YYYY-MM-DD), 실제 발매일
   vibe: number; // 0.0 (Calm) to 1.0 (Energetic)
   popularity: number; // Determines circle size
   region: Region;

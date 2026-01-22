@@ -45,7 +45,7 @@ const calculateDynamicRegionRanges = (albums: Album[]): Record<string, { min: nu
   
   // 3. 중앙 밀집 범위 설정 (0.15 ~ 0.85 = 70% 영역만 사용, 위아래 빈 공간 제거)
   const COMPRESSED_MIN = 0.15;
-  const COMPRESSED_MAX = 0.85;
+  const COMPRESSED_MAX = 1.1;
   const usableRange = COMPRESSED_MAX - COMPRESSED_MIN;
   
   // 4. 각 지역에 Y축 공간 비례적으로 할당 (앨범이 없는 지역은 제외)
@@ -261,11 +261,43 @@ const getY = (country: string | undefined, region: string, albumId: string, vibe
   return Math.max(0, Math.min(1, finalY));
 };
 
-// X 좌표 생성: 연도 + 더 넓은 분산 (경계 밖으로 살짝 나가게)
-const getX = (year: number, albumId: string): number => {
+// 날짜를 연도 내 비율로 변환 (0.0 ~ 1.0)
+const getDayOfYearRatio = (dateString: string): number => {
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const startOfYear = new Date(year, 0, 1);
+  const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInYear = isLeapYear ? 366 : 365;
+  return dayOfYear / daysInYear;
+};
+
+// X 좌표 생성: 실제 발매일 기반 (날짜가 없으면 연중 랜덤 분산)
+const getX = (year: number, releaseDate: string | undefined, albumId: string): number => {
+  if (releaseDate) {
+    try {
+      // 정확하지 않은 날짜(01-01, 12-31)는 랜덤 분산
+      const isApproximateDate = releaseDate.endsWith('-01-01') || releaseDate.endsWith('-12-31');
+      
+      if (isApproximateDate) {
+        // 연도만 있는 경우: 연도 내에서 랜덤 분산
+        const seed = hashCode(albumId + 'x');
+        const dayRatio = 0.1 + ((seed % 10000) / 10000) * 0.8;
+        return year + dayRatio;
+      } else {
+        // 정확한 발매일이 있으면 그 날짜 사용
+        const dayRatio = getDayOfYearRatio(releaseDate);
+        return year + dayRatio;
+      }
+    } catch (e) {
+      // 날짜 파싱 실패 시 폴백
+      console.warn(`Failed to parse release date: ${releaseDate}`, e);
+    }
+  }
+  
+  // 날짜가 없으면 연도 내에서 랜덤하게 분산 (0.1 ~ 0.9)
   const seed = hashCode(albumId + 'x');
-  // 연도 내에서 -0.2 ~ 1.2 범위로 분산 (경계 넘어가게!)
-  const dayRatio = ((seed % 10000) / 10000 - 0.1) * 1.4; // -0.14 ~ 1.26
+  const dayRatio = 0.1 + ((seed % 10000) / 10000) * 0.8;
   return year + dayRatio;
 };
 
@@ -331,13 +363,52 @@ export const MapCanvas: React.FC = () => {
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, object: Album} | null>(null);
   const [clickedAlbum, setClickedAlbum] = useState<{x: number, y: number, album: Album} | null>(null);
   const popupRef = React.useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   
   const [viewState, setViewState] = useState({
-    target: [WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 0] as [number, number, number],
+    target: [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.45, 0] as [number, number, number],  // 실제 노드 중심 (0.15~0.75의 중심 = 0.45)
     zoom: -0.5,  // 더 줌아웃 (넓은 영역 대응)
     transitionDuration: 0,
     transitionInterpolator: null as any
   });
+
+  // 화면 크기 감지 및 초기 zoom 조정
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  
+  useEffect(() => {
+    const updateSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setContainerSize({ width, height });
+      
+      // 초기 로드 시에만 zoom 조정
+      if (isInitialLoad) {
+        // UI 요소들의 공간을 고려 (우측 320px, 하단 150px 정도)
+        const effectiveWidth = width - (width > 640 ? 340 : 300);
+        const effectiveHeight = height - 180;
+        
+        // 화면 aspect ratio에 맞는 초기 zoom 계산
+        const widthRatio = effectiveWidth / WORLD_WIDTH;
+        const heightRatio = effectiveHeight / WORLD_HEIGHT;
+        const minRatio = Math.min(widthRatio, heightRatio);
+        
+        // 초기 zoom: 전체 맵이 보이도록 (약간의 여백 포함)
+        const initialZoom = Math.log2(minRatio * 0.85);
+        
+        setViewState(prev => ({
+          ...prev,
+          zoom: initialZoom,
+          target: [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.45, 0]  // 실제 노드 중심
+        }));
+        
+        setIsInitialLoad(false);
+      }
+    };
+    
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [isInitialLoad]);
 
   // 데이터 변경 시 동적으로 Y축 범위 업데이트
   useEffect(() => {
@@ -383,7 +454,7 @@ export const MapCanvas: React.FC = () => {
     };
   }, []);
 
-  // 자동 페이드아웃 타이머
+  // 그리드 자동 페이드아웃
   const [showGrid, setShowGrid] = useState(true);
   const fadeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   
@@ -415,7 +486,7 @@ export const MapCanvas: React.FC = () => {
     console.log('  - ViewState zoom:', viewState.zoom.toFixed(2));
     if (filteredAlbums.length > 0 && scales) {
       const sample = filteredAlbums[0];
-      const xValue = getX(sample.year, sample.id);
+      const xValue = getX(sample.year, sample.releaseDate, sample.id);
       const yValue = getY(sample.country, sample.region as string, sample.id, sample.vibe);
       console.log('  - Sample album:', sample.title);
       console.log('  - X:', xValue.toFixed(3), '| Y:', yValue.toFixed(3));
@@ -441,7 +512,7 @@ export const MapCanvas: React.FC = () => {
        if (selectedAlbumId) {
          const selectedAlbum = albums.find(a => a.id === selectedAlbumId);
          if (selectedAlbum) {
-           const albumXValue = getX(selectedAlbum.year, selectedAlbum.id);
+           const albumXValue = getX(selectedAlbum.year, selectedAlbum.releaseDate, selectedAlbum.id);
           const albumYValue = getY(selectedAlbum.country, selectedAlbum.region as string, selectedAlbum.id, selectedAlbum.vibe);
            const albumPixelX = scales.xScale(albumXValue);
            const albumPixelY = scales.yScale(albumYValue);
@@ -567,7 +638,12 @@ export const MapCanvas: React.FC = () => {
           
           // 줌 레벨에 따른 기본 선 간격 결정
           let yearInterval = 10; // 기본 10년 단위 (50년 이상)
-          if (visibleYearRange <= 20) {
+          let showMonths = false; // 월 단위 표시 여부
+          
+          if (visibleYearRange <= 3) {
+            yearInterval = 1; // 3년 이하: 1년 단위
+            showMonths = true; // 월 단위도 표시
+          } else if (visibleYearRange <= 20) {
             yearInterval = 1; // 20년 이하: 1년 단위
           } else if (visibleYearRange <= 50) {
             yearInterval = 5; // 20-50년: 5년 단위
@@ -606,6 +682,27 @@ export const MapCanvas: React.FC = () => {
                   interval: yearInterval,
                   baseOpacity: baseOpacity
                 });
+              }
+            }
+          }
+          
+          // 월 단위 라인 추가 (3년 이하일 때만)
+          if (showMonths) {
+            const monthStart = Math.floor(viewportYearRange[0]);
+            const monthEnd = Math.ceil(viewportYearRange[1]);
+            
+            for (let year = monthStart; year <= monthEnd; year++) {
+              if (year >= MIN_YEAR && year <= MAX_YEAR) {
+                // 각 연도의 12개월 (1월부터 11월까지, 12월은 다음 해 1월과 겹침)
+                for (let month = 1; month < 12; month++) {
+                  const monthYear = year + month / 12;
+                  lines.push({
+                    year: monthYear,
+                    isDecade: false,
+                    interval: 1/12,
+                    baseOpacity: 0.15  // 매우 투명하게
+                  });
+                }
               }
             }
           }
@@ -668,7 +765,7 @@ export const MapCanvas: React.FC = () => {
         },
         getText: (d: any) => String(d.year),
         getColor: [255, 255, 255, 255],
-        getSize: 12,
+        getSize: containerSize.width < 640 ? 10 : containerSize.width < 1024 ? 11 : 12,
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'center',
         opacity: gridVisible,
@@ -681,7 +778,8 @@ export const MapCanvas: React.FC = () => {
         updateTriggers: {
           getData: [viewportYearRange],
           getPosition: [viewState.zoom, viewState.target, viewportYearRange],
-          opacity: [gridVisible]
+          opacity: [gridVisible],
+          getSize: [containerSize.width]
         }
       }),
       
@@ -730,10 +828,10 @@ export const MapCanvas: React.FC = () => {
           
           return [labelX, regionY, 0];
         },
-        getText: (d: any): string => d.text,
+        getText: (d: any): string => containerSize.width < 640 ? d.text.split(' ')[0] : d.text, // 작은 화면에서는 첫 단어만
         getColor: [255, 255, 255, 255],
-        getSize: 14,
-        outlineWidth: 3,
+        getSize: containerSize.width < 640 ? 10 : containerSize.width < 1024 ? 12 : 14,
+        outlineWidth: containerSize.width < 640 ? 2 : 3,
         outlineColor: [0, 0, 0, 255],
         getTextAnchor: 'end' as const,  // 오른쪽 끝 기준 (왼쪽으로 뻗어나감)
         getAlignmentBaseline: 'center' as const,
@@ -747,7 +845,9 @@ export const MapCanvas: React.FC = () => {
         updateTriggers: {
           getPosition: [viewState.zoom, viewState.target, albums.length],
           opacity: [gridVisible],
-          getData: [albums.length]
+          getData: [albums.length],
+          getSize: [containerSize.width],
+          getText: [containerSize.width]
         }
       }),
       
@@ -755,8 +855,8 @@ export const MapCanvas: React.FC = () => {
         id: 'albums-layer',
         data: filteredAlbums,
         getPosition: (d: Album) => {
-          // X축: 연도 + 분산 (전체 활용)
-          const xValue = getX(d.year, d.id);
+          // X축: 실제 발매일 기반 배치
+          const xValue = getX(d.year, d.releaseDate, d.id);
           const x = scales.xScale(xValue);
           
           // Y축: 국가 위도 기반 + 약간의 분산
@@ -795,10 +895,10 @@ export const MapCanvas: React.FC = () => {
             return [...baseColor, 240] as [number, number, number, number];
           }
           
-          // 뷰포트 밖의 앨범: 약간 투명하게 (끊기지 않고 계속 보이게)
+          // 타임슬라이드 범위 밖의 앨범: 블러 처리
           const inViewport = d.year >= viewportYearRange[0] && d.year <= viewportYearRange[1];
           if (!inViewport) {
-            return [...baseColor, 100] as [number, number, number, number];
+            return [...baseColor, 80] as [number, number, number, number];
           }
           
           // 다른 앨범이 선택/브러시된 경우: 살짝만 어둡게 (배경화, 하지만 여전히 보임)
@@ -886,9 +986,9 @@ export const MapCanvas: React.FC = () => {
               return;
             }
             
-            // Zoom 제한 적용
+            // Zoom 제한 적용 (최대 6 = 약 1년이 화면에 꽉 참)
             let zoom = newViewState.zoom;
-            zoom = Math.max(0.2, Math.min(4, zoom));
+            zoom = Math.max(0.2, Math.min(6, zoom));
             
             // 경계 제한 (드래그만 제한, 줌은 자유롭게)
             const zoomScale = Math.pow(2, zoom);
@@ -961,30 +1061,30 @@ export const MapCanvas: React.FC = () => {
             </div>
           )}
           
-          {/* Clicked Album Popup (SearchBar와 동일한 스타일) */}
+          {/* Clicked Album Popup (반응형, 크기 키움) */}
           {clickedAlbum && (
             <div 
               ref={popupRef}
-              className="absolute z-50 w-[280px] bg-[#12131D]/98 backdrop-blur-3xl border border-accent/40 rounded-xl shadow-[0_20px_60px_-10px_rgba(99,102,241,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300"
+              className="absolute z-50 w-[320px] sm:w-[360px] md:w-[400px] lg:w-[440px] bg-[#12131D]/98 backdrop-blur-3xl border border-accent/40 rounded-xl shadow-[0_20px_60px_-10px_rgba(99,102,241,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300"
               style={{ 
-                left: Math.min(clickedAlbum.x + 20, window.innerWidth - 300), 
-                top: Math.min(clickedAlbum.y, window.innerHeight - 250) 
+                left: Math.min(clickedAlbum.x + 20, window.innerWidth - 340), 
+                top: Math.min(clickedAlbum.y, window.innerHeight - 280) 
               }}
             >
-              <div className="p-4">
-                <div className="flex items-start gap-4 mb-4">
+              <div className="p-4 sm:p-5 md:p-6">
+                <div className="flex items-start gap-3 sm:gap-4 md:gap-5 mb-4">
                   <img 
                     src={clickedAlbum.album.coverUrl} 
-                    className="w-20 h-20 rounded-lg border border-white/20 shadow-lg" 
+                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-lg border border-white/20 shadow-lg" 
                     alt={clickedAlbum.album.title} 
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white mb-1 truncate">{clickedAlbum.album.title}</h3>
-                    <p className="text-xs text-slate-400 truncate">{clickedAlbum.album.artist}</p>
-                    <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-500">
+                    <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-1 truncate">{clickedAlbum.album.title}</h3>
+                    <p className="text-xs sm:text-sm md:text-base text-slate-400 truncate">{clickedAlbum.album.artist}</p>
+                    <div className="flex items-center gap-2 mt-2 text-[10px] sm:text-xs md:text-sm text-slate-500">
                       <span>{clickedAlbum.album.year}</span>
                       <span>•</span>
-                      <span>{clickedAlbum.album.region}</span>
+                      <span>{clickedAlbum.album.country}</span>
                       <span>•</span>
                       <span>{clickedAlbum.album.genres.slice(0, 2).join(', ')}</span>
                     </div>
@@ -997,7 +1097,7 @@ export const MapCanvas: React.FC = () => {
                       selectAlbum(clickedAlbum.album.id);
                       setClickedAlbum(null);
                     }}
-                    className="flex-1 px-4 py-2 bg-accent hover:bg-accent/80 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-accent hover:bg-accent/80 text-white text-xs sm:text-sm md:text-base font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                   >
                     View Detail
                   </button>
@@ -1005,7 +1105,7 @@ export const MapCanvas: React.FC = () => {
                     onClick={() => {
                       setClickedAlbum(null);
                     }}
-                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-bold rounded-lg transition-all"
+                    className="px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs sm:text-sm md:text-base font-bold rounded-lg transition-all"
                   >
                     Close
                   </button>

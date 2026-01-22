@@ -121,6 +121,7 @@ const transformAlbumData = (backendAlbum: any): Album => {
     title: backendAlbum.title,
     artist: backendAlbum.artist_name,
     year: backendAlbum.year,
+    releaseDate: backendAlbum.release_date || undefined, // 실제 발매일 (YYYY-MM-DD)
     vibe: backendAlbum.genre_vibe,
     popularity: backendAlbum.popularity,
     region: backendAlbum.region_bucket as Region,

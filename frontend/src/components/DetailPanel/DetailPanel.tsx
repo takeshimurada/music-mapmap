@@ -203,8 +203,8 @@ export const DetailPanel: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-panel/95 backdrop-blur-xl border-l border-slate-800 shadow-2xl overflow-hidden">
       
-      {/* 1. Hero Header */}
-      <div className="relative h-56 w-full shrink-0 group">
+      {/* 1. Hero Header (더 큰 크기) */}
+      <div className="relative h-48 sm:h-56 md:h-64 lg:h-72 w-full shrink-0 group">
         <div className="absolute inset-0 bg-gradient-to-t from-panel via-panel/60 to-transparent z-10" />
         <img 
           src={album.coverUrl} 
@@ -219,50 +219,50 @@ export const DetailPanel: React.FC = () => {
         </button>
         
         <div className="absolute bottom-5 left-6 z-20 w-[calc(100%-3rem)]">
-          <div className="flex items-center gap-2 mb-2">
-            <span 
-              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white shadow-lg"
-              style={{ backgroundColor: GENRE_COLORS[album.genres[0]] || GENRE_COLORS['Other'] }}
-            >
-              {album.genres[0]}
-            </span>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {/* 모든 장르 표시 (하위 장르 포함) - 작은 크기로 */}
+            {album.genres.map((genre, idx) => (
+              <span 
+                key={idx}
+                className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white shadow-lg"
+                style={{ backgroundColor: GENRE_COLORS[genre] || GENRE_COLORS['Other'] }}
+              >
+                {genre}
+              </span>
+            ))}
             <span className="text-[10px] font-mono text-slate-300 border border-slate-700 px-2 py-0.5 rounded bg-black/40">
               {album.year}
             </span>
-             <span className="text-[10px] font-mono text-slate-300 border border-slate-700 px-2 py-0.5 rounded bg-black/40">
-              {album.region}
+            <span className="text-[10px] font-mono text-slate-300 border border-slate-700 px-2 py-0.5 rounded bg-black/40">
+              {album.country}
             </span>
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight mb-1 truncate">{album.title}</h2>
-          <p className="text-lg text-slate-300 font-medium truncate">{album.artist}</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight mb-1 truncate">{album.title}</h2>
+          <p className="text-sm sm:text-base md:text-lg text-slate-300 font-medium truncate">{album.artist}</p>
         </div>
       </div>
 
-      {/* 1.5. Action Buttons */}
-      <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/30 space-y-3">
-        
-        {/* 첫 번째 줄: Like + 듣고싶어요 */}
-        <div className="flex items-center gap-3">
+      {/* 1.5. Action Buttons (한 줄로 압축) */}
+      <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/30">
+        <div className="flex items-center gap-1.5">
+          {/* Like */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleLikeToggle();
             }}
             disabled={likeLoading}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg font-bold text-[10px] transition-all ${
               isLiked 
-                ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white hover:from-pink-600 hover:to-red-600 shadow-pink-500/30' 
-                : 'bg-slate-800/50 border-2 border-slate-700 text-slate-300 hover:bg-slate-700 hover:border-pink-500/50'
+                ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white' 
+                : 'bg-slate-800/50 border border-slate-700 text-slate-300'
             } ${likeLoading ? 'opacity-50 cursor-wait' : ''}`}
           >
-            <Heart 
-              size={18} 
-              fill={isLiked ? 'currentColor' : 'none'} 
-              strokeWidth={2.5}
-            />
-            <span>{isLiked ? '❤️ Liked' : 'Like'}</span>
+            <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} strokeWidth={2.5} />
+            <span className="hidden sm:inline">{isLiked ? 'Liked' : 'Like'}</span>
           </button>
           
+          {/* 듣고싶어요 */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -270,40 +270,41 @@ export const DetailPanel: React.FC = () => {
                 handleLikeToggle();
               }
             }}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
+            className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg font-bold text-[10px] transition-all ${
               isLiked
-                ? 'bg-purple-500/20 border-2 border-purple-500 text-purple-400 cursor-default'
-                : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-purple-500/30'
+                ? 'bg-purple-500/20 border border-purple-500 text-purple-400'
+                : 'bg-purple-500 text-white'
             }`}
           >
-            <Star size={18} fill={isLiked ? 'currentColor' : 'none'} strokeWidth={2.5} />
-            <span>{isLiked ? '✅ 담았어요' : '듣고싶어요'}</span>
+            <Star size={12} fill={isLiked ? 'currentColor' : 'none'} strokeWidth={2.5} />
+            <span className="hidden sm:inline">{isLiked ? '담음' : '듣고싶어요'}</span>
           </button>
-        </div>
-        
-        {/* 두 번째 줄: Spotify + YouTube */}
-        <div className="flex items-center gap-3">
+          
+          {/* Spotify */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handlePlayOnSpotify();
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg shadow-green-600/20"
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-[10px] transition-all"
+            title="Spotify"
           >
-            <ExternalLink size={16} />
-            <span>Spotify</span>
+            <ExternalLink size={12} />
+            <span className="hidden sm:inline">Spotify</span>
           </button>
           
+          {/* YouTube */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               const query = encodeURIComponent(`${album.artist} ${album.title}`);
               window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium text-sm transition-all shadow-lg shadow-red-600/20"
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium text-[10px] transition-all"
+            title="YouTube"
           >
-            <ExternalLink size={16} />
-            <span>YouTube</span>
+            <ExternalLink size={12} />
+            <span className="hidden sm:inline">YouTube</span>
           </button>
         </div>
       </div>
@@ -514,14 +515,14 @@ export const DetailPanel: React.FC = () => {
 const TabButton = ({ id, label, icon: Icon, active, set }: { id: Tab, label: string, icon: any, active: Tab, set: (t: Tab) => void }) => (
   <button
     onClick={() => set(id)}
-    className={`flex-1 py-5 flex flex-col items-center justify-center gap-2 text-xs font-bold transition-all duration-300 border-b-3 group ${
+    className={`flex-1 py-2.5 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all duration-300 border-b-2 group ${
       active === id 
         ? 'border-accent text-accent bg-accent/10' 
         : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5 hover:border-slate-700'
     }`}
   >
-    <Icon size={20} className={`${active === id ? 'text-accent' : 'text-slate-600 group-hover:text-slate-400'} transition-colors`} />
-    <span className="text-[11px] uppercase tracking-wide">{label}</span>
+    <Icon size={14} className={`${active === id ? 'text-accent' : 'text-slate-600 group-hover:text-slate-400'} transition-colors`} />
+    <span className="text-[9px] uppercase tracking-wide">{label}</span>
   </button>
 );
 

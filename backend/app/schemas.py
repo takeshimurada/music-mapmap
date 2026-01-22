@@ -16,6 +16,7 @@ class AlbumBase(BaseModel):
 
 class AlbumResponse(AlbumBase):
     popularity: float
+    release_date: Optional[date] = None  # 대표 릴리스의 발매일
     created_at: datetime
     
     class Config:

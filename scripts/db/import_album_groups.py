@@ -66,17 +66,29 @@ async def main():
         title = album.get("title", "Unknown Title")
         artist = album.get("artistName", "Unknown Artist")
         year = album.get("year")
+        release_date_str = album.get("releaseDate")  # "YYYY-MM-DD" 형식
         country = album.get("country")
         primary_genre = album.get("genreFamily", album.get("primaryGenre"))
         popularity = album.get("popularity", 0) / 100.0
         cover_url = album.get("artworkUrl")
         genre_vibe = album.get("genreVibe", 0.5)
+        
+        # release_date를 Date 객체로 변환 (있으면)
+        release_date = None
+        if release_date_str:
+            try:
+                from datetime import datetime
+                release_date = datetime.fromisoformat(release_date_str).date()
+            except (ValueError, AttributeError):
+                # 파싱 실패 시 None으로 유지
+                pass
 
         new_groups.append(AlbumGroup(
             album_group_id=album_id,
             title=title,
             primary_artist_display=artist,
             original_year=year,
+            earliest_release_date=release_date,  # 최초 릴리스 날짜 저장
             country_code=country,
             primary_genre=primary_genre,
             popularity=popularity,
@@ -93,7 +105,8 @@ async def main():
         new_releases.append(Release(
             release_id=to_release_id(),
             album_group_id=album_id,
-            release_title=title
+            release_title=title,
+            release_date=release_date  # 릴리스 날짜 저장
         ))
 
     print(f"📊 To insert: {len(new_groups)} album_groups, {len(new_nodes)} map_nodes, {len(new_releases)} releases")

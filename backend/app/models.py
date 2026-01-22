@@ -95,6 +95,7 @@ class AlbumGroup(Base):
     title = Column(String, nullable=False, index=True)
     primary_artist_display = Column(String, nullable=False, index=True)
     original_year = Column(Integer, index=True)
+    earliest_release_date = Column(Date, nullable=True)  # 캐시된 최초 릴리스 날짜 (성능 최적화)
     country_code = Column(String, nullable=True)
     primary_genre = Column(String, nullable=True)
     popularity = Column(Float, default=0.0)
