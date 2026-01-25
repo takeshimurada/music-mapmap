@@ -22,7 +22,6 @@ const WORLD_HEIGHT = 900;  // 600 → 900 (50% 확장)
 // 대륙 순서 정의
 const REGION_ORDER = [
   'Africa',
-  'Latin America',
   'South America', 
   'Caribbean',
   'North America',
@@ -31,7 +30,7 @@ const REGION_ORDER = [
   'Oceania'
 ];
 
-// 동적 Y축 범위 계산 함수 (중앙 밀집 + 노드 양에 따른 동적 할당)
+// 동적 Y축 범위 계산 함수 (중앙 밀집 + 노드 양에 따른 동적 할당 + 최소 영역 보장)
 const calculateDynamicRegionRanges = (albums: Album[]): Record<string, { min: number; max: number; center: number }> => {
   // 1. 각 지역별 앨범 수 계산
   const regionCounts: Record<string, number> = {};
@@ -43,26 +42,39 @@ const calculateDynamicRegionRanges = (albums: Album[]): Record<string, { min: nu
   // 2. 총 앨범 수
   const totalAlbums = albums.length;
   
-  // 3. 중앙 밀집 범위 설정 (0.15 ~ 0.85 = 70% 영역만 사용, 위아래 빈 공간 제거)
-  const COMPRESSED_MIN = 0.15;
-  const COMPRESSED_MAX = 1.1;
+  // 3. 중앙 밀집 범위 설정 (0~100% 범위 내에서 사용)
+  const COMPRESSED_MIN = 0.05;
+  const COMPRESSED_MAX = 0.95;
   const usableRange = COMPRESSED_MAX - COMPRESSED_MIN;
   
-  // 4. 각 지역에 Y축 공간 비례적으로 할당 (앨범이 없는 지역은 제외)
-  const ranges: Record<string, { min: number; max: number; center: number }> = {};
-  let currentRelativeY = 0.0; // 0~1 상대 위치
+  // 4. 최소 영역 크기 설정 (전체의 2% 이상)
+  const MIN_REGION_RATIO = 0.02;
+  
+  // 5. 앨범이 있는 지역과 조정된 비율 계산
+  const activeRegions: { region: string; count: number; ratio: number }[] = [];
+  let totalRatio = 0;
   
   REGION_ORDER.forEach(region => {
     const count = regionCounts[region] || 0;
-    if (count === 0) {
-      // 앨범이 없는 지역은 공간 할당하지 않음
-      return;
+    if (count > 0) {
+      // 비율 계산 (최소값 적용)
+      const rawRatio = count / totalAlbums;
+      const adjustedRatio = Math.max(rawRatio, MIN_REGION_RATIO);
+      activeRegions.push({ region, count, ratio: adjustedRatio });
+      totalRatio += adjustedRatio;
     }
-    
-    // 비율 계산 (정확히 비례)
-    const ratio = count / totalAlbums;
-    
-    // 상대 위치(0~1)를 실제 압축된 Y 좌표로 변환
+  });
+  
+  // 6. 비율 정규화 (합이 1이 되도록)
+  activeRegions.forEach(r => {
+    r.ratio = r.ratio / totalRatio;
+  });
+  
+  // 7. 각 지역에 Y축 공간 할당
+  const ranges: Record<string, { min: number; max: number; center: number }> = {};
+  let currentRelativeY = 0.0;
+  
+  activeRegions.forEach(({ region, ratio }) => {
     const actualMin = COMPRESSED_MIN + currentRelativeY * usableRange;
     const actualMax = COMPRESSED_MIN + (currentRelativeY + ratio) * usableRange;
     
@@ -81,9 +93,8 @@ const calculateDynamicRegionRanges = (albums: Album[]): Record<string, { min: nu
 // 기본 Y축 범위 (데이터 로드 전)
 let REGION_Y_RANGES: Record<string, { min: number; max: number; center: number }> = {
   'Africa': { min: 0.00, max: 0.08, center: 0.04 },
-  'Latin America': { min: 0.08, max: 0.15, center: 0.115 },
-  'South America': { min: 0.08, max: 0.15, center: 0.115 },
-  'Caribbean': { min: 0.15, max: 0.20, center: 0.175 },
+  'South America': { min: 0.08, max: 0.18, center: 0.13 },
+  'Caribbean': { min: 0.18, max: 0.23, center: 0.205 },
   'North America': { min: 0.20, max: 0.53, center: 0.365 },  // 0.55 → 0.53 (빈 공간 제거)
   'Europe': { min: 0.53, max: 0.85, center: 0.69 },           // 0.55 → 0.53 (빈 공간 제거)
   'Asia': { min: 0.85, max: 0.93, center: 0.89 },
@@ -101,7 +112,7 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'Egypt': 0.02,
   'South Africa': 0.07,
   
-  // Latin America & South America (0.08-0.15)
+  // South America (0.08-0.18)
   'Mexico': 0.085,              // 북쪽
   'Colombia': 0.095,
   'Venezuela': 0.10,
@@ -183,9 +194,8 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
 // 지역별 기본 Y 위치 (국가 정보가 없을 때 사용)
 const REGION_DEFAULT_Y: Record<string, number> = {
   'Africa': 0.04,
-  'Latin America': 0.115,
-  'South America': 0.115,
-  'Caribbean': 0.175,
+  'South America': 0.13,
+  'Caribbean': 0.205,
   'North America': 0.375,
   'Europe': 0.70,
   'Asia': 0.89,
@@ -476,10 +486,14 @@ export const MapCanvas: React.FC = () => {
   }, [clickedAlbum]);
 
   // DetailPanel이 닫힐 때 clickedAlbum도 초기화 (노드 원상태 복구)
+  // selectedAlbumId가 "있었다가 없어질 때"만 초기화 (이전 값 추적)
+  const prevSelectedAlbumIdRef = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedAlbumId && clickedAlbum) {
+    // 이전에 선택된 앨범이 있었는데 지금 없어진 경우에만 초기화
+    if (prevSelectedAlbumIdRef.current && !selectedAlbumId && clickedAlbum) {
       setClickedAlbum(null);
     }
+    prevSelectedAlbumIdRef.current = selectedAlbumId;
   }, [selectedAlbumId, clickedAlbum]);
 
   // scales를 먼저 정의
@@ -837,7 +851,6 @@ export const MapCanvas: React.FC = () => {
           const labels = [];
           const regionNames: Record<string, string> = {
             'Africa': 'AFRICA',
-            'Latin America': 'LATIN AMERICA',
             'South America': 'SOUTH AMERICA',
             'Caribbean': 'CARIBBEAN',
             'North America': 'NORTH AMERICA',
@@ -983,11 +996,14 @@ export const MapCanvas: React.FC = () => {
         }
       },
       onClick: (info: PickingInfo) => {
+        console.log('🖱️ Click event:', info);
         if (info.object) {
           const album = info.object as Album;
+          console.log('🎵 Clicked album:', album.title, album.id);
           // 작은 팝업만 표시 (selectAlbum 호출 안함)
           setClickedAlbum({ x: info.x, y: info.y, album });
         } else {
+          console.log('🖱️ Clicked empty area');
           setClickedAlbum(null);
         }
       },
@@ -1010,6 +1026,10 @@ export const MapCanvas: React.FC = () => {
           width="100%"
           height="100%"
           viewState={viewState}
+          eventRecognizerOptions={{
+            pan: { threshold: 10 },  // 10픽셀 이상 움직여야 드래그로 인식
+            tap: { threshold: 10 },  // 클릭 허용 범위
+          }}
           onViewStateChange={({ viewState: newViewState }: any) => {
             // 드래그/줌 시 DetailPanel 자동 닫기
             if (selectedAlbumId) {
@@ -1094,6 +1114,16 @@ export const MapCanvas: React.FC = () => {
               scrollZoom: { speed: 0.005, smooth: true }
             }
           })}
+          onClick={(info: PickingInfo) => {
+            console.log('🔥 DeckGL onClick:', info);
+            if (info.object) {
+              const album = info.object as Album;
+              console.log('🎵 Clicked album:', album.title);
+              setClickedAlbum({ x: info.x, y: info.y, album });
+            } else {
+              setClickedAlbum(null);
+            }
+          }}
           getCursor={() => 'grab'}
           parameters={{
             clearColor: [1, 1, 1, 1]  // 흰색 배경

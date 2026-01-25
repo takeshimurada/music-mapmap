@@ -22,7 +22,6 @@ const REGION_COLORS: Record<string, string> = {
   'North America': '#F472B6',
   'Europe': '#60A5FA',
   'Asia': '#FBBF24',
-  'Latin America': '#34D399',
   'South America': '#34D399',
   'Caribbean': '#34D399',
   'Oceania': '#FBBF24',

@@ -3,7 +3,9 @@ import { Search, X, Clock, ArrowUpRight, Music, Trash2 } from 'lucide-react';
 import { useStore, BACKEND_URL, getAuthHeaders } from '../../state/store';
 import { Album } from '../../types';
 
-export const SearchBar: React.FC = () => {
+type SearchBarVariant = 'default' | 'embedded';
+
+export const SearchBar: React.FC<{ variant?: SearchBarVariant }> = ({ variant = 'default' }) => {
   const { searchQuery, setSearchQuery, selectAlbum, albums, setViewport, setBrushedAlbums } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Album[]>([]);
@@ -131,6 +133,10 @@ export const SearchBar: React.FC = () => {
     localStorage.setItem('sonic_recent_queries', JSON.stringify(updated));
   };
 
+  const inputClassName = variant === 'embedded'
+    ? 'block w-full py-2.5 pl-10 pr-10 text-xs text-black bg-transparent focus:ring-0 focus:border-transparent placeholder-gray-400 outline-none'
+    : 'block w-full py-2.5 pl-10 pr-10 text-xs text-black border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-black/10 focus:border-black placeholder-gray-400 shadow-sm transition-all outline-none';
+
   return (
     <div ref={containerRef} className="relative w-full group">
       {/* Search Input */}
@@ -140,10 +146,11 @@ export const SearchBar: React.FC = () => {
         </div>
         <input
           type="text"
-          className="block w-full py-2.5 pl-10 pr-10 text-xs text-black border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-black/10 focus:border-black placeholder-gray-400 shadow-sm transition-all outline-none"
+          className={inputClassName}
           placeholder="앨범/아티스트 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onMouseEnter={() => setIsOpen(true)}
           onFocus={() => setIsOpen(true)}
         />
         {searchQuery && (

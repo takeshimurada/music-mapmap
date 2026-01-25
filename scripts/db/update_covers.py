@@ -21,7 +21,7 @@ from app.models import AlbumGroup
 # DB 연결
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://sonic:sonic_password@localhost:5432/sonic_db"
+    "postgresql+asyncpg://sonic:0416@localhost:5432/sonic_db"
 )
 
 engine = create_async_engine(DATABASE_URL, echo=False)

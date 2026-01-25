@@ -12,7 +12,7 @@ sys.path.append("/app")
 from app.models import AlbumGroup, MapNode, Release
 import uuid
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:sonic_password@db:5432/sonic_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:0416@db:5432/sonic_db")
 
 # 🎸 1970-1985년 클래식 명반 데이터
 CLASSIC_ALBUMS = [

@@ -65,9 +65,9 @@ LASTFM_API_KEY=
 
 # Database
 POSTGRES_USER=sonic
-POSTGRES_PASSWORD=sonic_password
+POSTGRES_PASSWORD=0416
 POSTGRES_DB=sonic_db
-DATABASE_URL=postgresql+asyncpg://sonic:sonic_password@db:5432/sonic_db
+DATABASE_URL=postgresql+asyncpg://sonic:0416@db:5432/sonic_db
 
 # Redis
 REDIS_URL=redis://redis:6379/0

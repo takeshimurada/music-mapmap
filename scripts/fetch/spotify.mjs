@@ -7,7 +7,7 @@ dotenv.config();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const MARKET = process.env.SPOTIFY_MARKET || ""; // 시장 제한 제거 (글로벌 검색)
-const TARGET_ALBUMS = Number(process.env.TARGET_ALBUMS || "1500"); // 목표 수량
+const TARGET_ALBUMS = Number(process.env.TARGET_ALBUMS || "1000"); // 목표 수량
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env");
@@ -155,7 +155,9 @@ function buildQueries() {
   
   // 🎯 1955-1970: 클래식 명반 시대 (매 년도별 세밀 수집)
   
-  for (let y = 1962; y <= 1969; y++) {
+  
+  // 1973~1979년
+  for (let y = 1980; y <= 1989; y++) {
     queries.push(`year:${y}`);
   }
 

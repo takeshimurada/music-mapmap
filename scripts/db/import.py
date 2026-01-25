@@ -42,10 +42,10 @@ COUNTRY_TO_REGION = {
     'Indonesia': 'Asia', 'Philippines': 'Asia', 'India': 'Asia', 'Vietnam': 'Asia',
     'Pakistan': 'Asia',
     
-    # Latin America / South America
+    # South America
     'Brazil': 'South America', 'Argentina': 'South America', 'Chile': 'South America',
-    'Colombia': 'Latin America', 'Peru': 'Latin America', 'Venezuela': 'Latin America',
-    'Ecuador': 'Latin America', 'Uruguay': 'South America', 'Paraguay': 'South America',
+    'Colombia': 'South America', 'Peru': 'South America', 'Venezuela': 'South America',
+    'Ecuador': 'South America', 'Uruguay': 'South America', 'Paraguay': 'South America',
     
     # Caribbean
     'Cuba': 'Caribbean', 'Jamaica': 'Caribbean', 'Dominican Republic': 'Caribbean',

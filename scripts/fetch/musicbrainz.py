@@ -18,7 +18,7 @@ from collections import Counter
 sys.path.append("/app")
 from app.models import Album
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:sonic_password@db:5432/sonic_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:0416@db:5432/sonic_db")
 
 # MusicBrainz API 설정
 MB_BASE_URL = "https://musicbrainz.org/ws/2"

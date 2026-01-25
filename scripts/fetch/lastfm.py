@@ -16,7 +16,7 @@ from collections import Counter
 sys.path.append("/app")
 from app.models import Album
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:sonic_password@db:5432/sonic_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://sonic:0416@db:5432/sonic_db")
 
 # Last.fm API 설정
 LASTFM_API_KEY = os.getenv("LASTFM_API_KEY", "")  # .env에 추가 필요

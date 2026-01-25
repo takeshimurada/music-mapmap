@@ -1,5 +1,5 @@
 // Region을 문자열 타입으로 변경 (백엔드와 일치)
-export type Region = 'North America' | 'Europe' | 'Asia' | 'South America' | 'Latin America' | 'Caribbean' | 'Oceania' | 'Africa';
+export type Region = 'North America' | 'Europe' | 'Asia' | 'South America' | 'Caribbean' | 'Oceania' | 'Africa';
 
 export interface Album {
   id: string;

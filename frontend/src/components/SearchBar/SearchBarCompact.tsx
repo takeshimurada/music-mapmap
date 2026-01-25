@@ -23,21 +23,21 @@ export const SearchBarCompact: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className={`bg-white border border-gray-300 hover:border-black rounded transition-all duration-300 h-[40px] flex items-center ${
+      onClick={() => {
+        if (!isExpanded) setIsExpanded(true);
+      }}
+      className={`bg-white border border-gray-300 hover:border-black rounded overflow-hidden transition-[width,padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width,padding] h-[40px] flex items-center ${
         isExpanded ? 'w-[320px] px-3' : 'w-auto px-3'
-      }`}
+      } ${isExpanded ? 'cursor-default' : 'cursor-pointer'}`}
     >
       {!isExpanded ? (
-        <button
-          onClick={() => setIsExpanded(true)}
-          className="flex items-center justify-center gap-1.5 text-black whitespace-nowrap"
-        >
+        <div className="flex items-center justify-center gap-1.5 text-black whitespace-nowrap">
           <Search size={14} strokeWidth={2} />
           <span className="text-[10px] font-semibold">Search</span>
-        </button>
+        </div>
       ) : (
         <div className="w-full">
-          <SearchBar />
+          <SearchBar variant="embedded" />
         </div>
       )}
     </div>

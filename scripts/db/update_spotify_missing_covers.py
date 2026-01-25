@@ -32,7 +32,7 @@ from app.models import AlbumGroup
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://sonic:sonic_password@localhost:5432/sonic_db"
+    "postgresql+asyncpg://sonic:0416@localhost:5432/sonic_db"
 )
 
 DISCOGS_TOKEN = os.getenv("DISCOGS_TOKEN")

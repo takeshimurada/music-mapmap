@@ -34,7 +34,7 @@ interface AppState {
 const MIN_YEAR = 1960;
 const MAX_YEAR = 2024;
 
-const ALL_REGIONS: Region[] = ['North America', 'Europe', 'Asia', 'South America', 'Latin America', 'Caribbean', 'Oceania', 'Africa'];
+const ALL_REGIONS: Region[] = ['North America', 'Europe', 'Asia', 'South America', 'Caribbean', 'Oceania', 'Africa'];
 
 const applyFilters = (state: AppState): Album[] => {
   return state.albums.filter(album => {

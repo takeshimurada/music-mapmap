@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Star, Calendar, Trash2, Music2, Search, RefreshCw, Sparkles } from 'lucide-react';
+import { Heart, Star, Calendar, Trash2, X, Search, RefreshCw, Sparkles } from 'lucide-react';
 import { useStore, BACKEND_URL, getAuthHeaders } from '../../state/store';
 import { LikeItem } from '../../types';
 
@@ -116,7 +116,9 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      {/* 배경 클릭 시 닫기 */}
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* Header - 슬림하고 모던하게 */}
         <div className="px-6 py-4 border-b border-gray-200">
@@ -128,7 +130,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               onClick={onClose}
               className="p-1.5 hover:bg-gray-100 rounded transition-colors"
             >
-              <Music2 size={18} className="text-gray-400 hover:text-black transition-colors" />
+              <X size={18} className="text-gray-400 hover:text-black transition-colors" />
             </button>
           </div>
 

@@ -26,6 +26,7 @@ const GENRES = [
 
 // 정렬 옵션
 const SORT_OPTIONS = [
+  { value: 'popularity', label: 'Popularity' },
   { value: 'newest', label: 'Newest → Oldest' },
   { value: 'oldest', label: 'Oldest → Newest' },
   { value: 'title-asc', label: 'Title (A → Z)' },
@@ -93,7 +94,7 @@ export const ArchivePage: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [selectedYear, setSelectedYear] = useState<string>('All');
   const [selectedCountry, setSelectedCountry] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<string>('newest');
+  const [sortBy, setSortBy] = useState<string>('popularity');
   const [displayCount, setDisplayCount] = useState(50); // 초기 표시 개수 (50개로 감소)
 
   // Intersection Observer용 ref
@@ -143,6 +144,8 @@ export const ArchivePage: React.FC = () => {
     // 정렬
     filtered.sort((a, b) => {
       switch (sortBy) {
+        case 'popularity':
+          return (b.popularity || 0) - (a.popularity || 0);
         case 'newest':
           return b.year - a.year;
         case 'oldest':

@@ -120,10 +120,10 @@ const MARKET_TO_REGION = {
   "HK": "Asia", "SG": "Asia", "TH": "Asia", "MY": "Asia",
   "ID": "Asia", "PH": "Asia", "IN": "Asia", "VN": "Asia",
   
-  // Latin America
-  "BR": "Latin America", "AR": "Latin America", "CL": "Latin America",
-  "CO": "Latin America", "PE": "Latin America", "VE": "Latin America",
-  "EC": "Latin America", "UY": "Latin America", "PY": "Latin America",
+  // South America
+  "BR": "South America", "AR": "South America", "CL": "South America",
+  "CO": "South America", "PE": "South America", "VE": "South America",
+  "EC": "South America", "UY": "South America", "PY": "South America",
   
   // Caribbean
   "CU": "Caribbean", "JM": "Caribbean", "DO": "Caribbean",
@@ -143,9 +143,9 @@ const GENRE_TO_REGION_HINTS = {
   "korean": "Asia",
   "japanese": "Asia",
   "mandopop": "Asia",
-  "latin": "Latin America",
-  "reggaeton": "Latin America",
-  "salsa": "Latin America",
+  "latin": "South America",
+  "reggaeton": "South America",
+  "salsa": "South America",
   "reggae": "Caribbean",
   "dancehall": "Caribbean",
 };

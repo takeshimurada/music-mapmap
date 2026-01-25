@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://sonic:sonic_password@db:5432/sonic_db
+      - DATABASE_URL=postgresql+asyncpg://sonic:0416@db:5432/sonic_db
       - REDIS_URL=redis://redis:6379/0
       - API_KEY=${API_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
@@ -31,7 +31,7 @@ services:
     container_name: sonic_db
     environment:
       - POSTGRES_USER=sonic
-      - POSTGRES_PASSWORD=sonic_password
+      - POSTGRES_PASSWORD=0416
       - POSTGRES_DB=sonic_db
     ports:
       - "5432:5432"
