@@ -404,6 +404,7 @@ export const MapCanvas: React.FC = () => {
     brushedAlbumIds,
     searchMatchedAlbumIds,
     searchQuery,
+    selectedGenre,
     viewport,
     setViewportYearRange,
     viewportYearRange,
@@ -414,131 +415,66 @@ export const MapCanvas: React.FC = () => {
   const [clickedAlbum, setClickedAlbum] = useState<{x: number, y: number, album: Album} | null>(null);
   const popupRef = React.useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const minZoomRef = React.useRef(-0.5);
+  const baseTargetRef = React.useRef<[number, number, number]>([
+    WORLD_WIDTH / 2,
+    WORLD_HEIGHT * 0.6,
+    0
+  ]);
   
   const [viewState, setViewState] = useState({
-    target: [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.45, 0] as [number, number, number],  // 실제 노드 중심 (0.15~0.75의 중심 = 0.45)
-    zoom: -0.5,  // 더 줌아웃 (넓은 영역 대응)
+    target: [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.6, 0] as [number, number, number],  // lower center per request
+    zoom: -1.1,  // 더 줌아웃 (넓은 영역 대응)
     transitionDuration: 0,
     transitionInterpolator: null as any
   });
 
+  const showGrid = true;
+
+  // scales를 먼저 정의
+  const scales = useMemo(() => {
+    const xScale = scaleLinear().domain([MIN_YEAR, MAX_YEAR + 1]).range([0, WORLD_WIDTH]);
+    const yScale = scaleLinear().domain([0, 1]).range([WORLD_HEIGHT, 0]);
+    return { xScale, yScale };
+  }, []);
+
   // 화면 크기 감지 및 초기 zoom 조정
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
-  
+
   useEffect(() => {
     const updateSize = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       setContainerSize({ width, height });
-      
-      // 초기 로드 시에만 zoom 조정
+
       if (isInitialLoad) {
-        // UI 요소들의 공간을 고려 (우측 320px, 하단 150px 정도)
         const effectiveWidth = width - (width > 640 ? 340 : 300);
         const effectiveHeight = height - 180;
-        
-        // 화면 aspect ratio에 맞는 초기 zoom 계산
         const widthRatio = effectiveWidth / WORLD_WIDTH;
         const heightRatio = effectiveHeight / WORLD_HEIGHT;
         const minRatio = Math.min(widthRatio, heightRatio);
-        
-        // 초기 zoom: 전체 맵이 보이도록 (약간의 여백 포함)
-        const initialZoom = Math.log2(minRatio * 0.85);
-        
+
+        const initialZoom = Math.log2(minRatio * 0.5);
+        const cappedInitialZoom = Math.min(initialZoom, -0.4);
+        minZoomRef.current = cappedInitialZoom;
+        baseTargetRef.current = [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.6, 0];
+
         setViewState(prev => ({
           ...prev,
-          zoom: initialZoom,
-          target: [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.45, 0]  // 실제 노드 중심
+          zoom: cappedInitialZoom,
+          target: baseTargetRef.current
         }));
-        
+
         setIsInitialLoad(false);
       }
     };
-    
+
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, [isInitialLoad]);
 
-  // 데이터 변경 시 동적으로 Y축 범위 업데이트
-  useEffect(() => {
-    if (albums.length > 0) {
-      REGION_Y_RANGES = calculateDynamicRegionRanges(albums);
-      console.log('📊 Dynamic Y-axis ranges (center-compressed 15%-85%, node density adaptive):');
-      Object.entries(REGION_Y_RANGES).forEach(([region, range]) => {
-        const size = ((range.max - range.min) * 100).toFixed(1);
-        console.log(`  ${region}: ${(range.min * 100).toFixed(1)}% - ${(range.max * 100).toFixed(1)}% (size: ${size}%)`);
-      });
-    }
-  }, [albums]);
-
-  // 외부 클릭 감지 - 팝업 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        setClickedAlbum(null);
-      }
-    };
-    if (clickedAlbum) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [clickedAlbum]);
-
-  // DetailPanel이 닫힐 때 clickedAlbum도 초기화 (노드 원상태 복구)
-  // selectedAlbumId가 "있었다가 없어질 때"만 초기화 (이전 값 추적)
-  const prevSelectedAlbumIdRef = React.useRef<string | null>(null);
-  useEffect(() => {
-    // 이전에 선택된 앨범이 있었는데 지금 없어진 경우에만 초기화
-    if (prevSelectedAlbumIdRef.current && !selectedAlbumId && clickedAlbum) {
-      setClickedAlbum(null);
-    }
-    prevSelectedAlbumIdRef.current = selectedAlbumId;
-  }, [selectedAlbumId, clickedAlbum]);
-
-  // scales를 먼저 정의
-  const scales = useMemo(() => {
-    // X축: 년도+날짜 (소수점 포함)
-    const xScale = scaleLinear().domain([MIN_YEAR, MAX_YEAR + 1]).range([0, WORLD_WIDTH]);
-    // Y축: 0-1 범위 (국가별 Y 좌표)
-    const yScale = scaleLinear().domain([0, 1]).range([WORLD_HEIGHT, 0]); 
-    return { xScale, yScale };
-  }, []);
-
-  // 경계 설정 (연도 범위 밖으로 못 나감)
-  const bounds = useMemo(() => {
-    return {
-      minX: 0,
-      maxX: WORLD_WIDTH,
-      minY: 0,
-      maxY: WORLD_HEIGHT
-    };
-  }, []);
-
-  // 그리드 자동 페이드아웃
-  const [showGrid, setShowGrid] = useState(true);
-  const fadeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   
-  useEffect(() => {
-    // 화면이 바뀌면 그리드 표시
-    setShowGrid(true);
-    
-    // 기존 타이머 클리어
-    if (fadeTimerRef.current) {
-      clearTimeout(fadeTimerRef.current);
-    }
-    
-    // 3초 후 페이드아웃
-    fadeTimerRef.current = setTimeout(() => {
-      setShowGrid(false);
-    }, 3000);
-    
-    return () => {
-      if (fadeTimerRef.current) {
-        clearTimeout(fadeTimerRef.current);
-      }
-    };
-  }, [viewState.zoom, viewState.target]);
 
   // 디버깅: 데이터 확인 (scales 정의 후)
   useEffect(() => {
@@ -821,8 +757,13 @@ export const MapCanvas: React.FC = () => {
           // 화면 상단에 고정되도록 viewport 따라가기
           const zoomScale = Math.pow(2, viewState.zoom);
           const visibleWorldHeight = WORLD_HEIGHT / zoomScale;
+
+            const panPaddingX = WORLD_WIDTH * 0.22;
+            const panPaddingY = WORLD_HEIGHT * 0.12;
           const topEdgeY = viewState.target[1] - visibleWorldHeight / 2;
-          return [scales.xScale(d.year), topEdgeY + 40, 0];  // 상단에서 40px 아래
+          const minLabelY = WORLD_HEIGHT * 0.0004;
+          const labelY = Math.max(minLabelY, topEdgeY - 2);
+          return [scales.xScale(d.year), labelY, 0];
         },
         getText: (d: any) => String(d.year),
         getColor: [0, 0, 0, 255],  // 검은색 텍스트
@@ -949,6 +890,11 @@ export const MapCanvas: React.FC = () => {
             // 검색 매칭 안된 앨범: 블러 처리 (매우 투명하게)
             return [...baseColor, 60] as [number, number, number, number];
           }
+
+          // ?? ?? ?: ?? ?? ?? ??
+          if (selectedGenre && genre !== selectedGenre) {
+            return [...baseColor, 20] as [number, number, number, number];
+          }
           
           // 브러시된 앨범: 매우 밝게 (아티스트 검색 시)
           if (isBrushed) {
@@ -1008,13 +954,13 @@ export const MapCanvas: React.FC = () => {
         }
       },
       updateTriggers: {
-        getFillColor: [selectedAlbumId, brushedAlbumIds, viewportYearRange, searchMatchedAlbumIds, searchQuery],
+        getFillColor: [selectedAlbumId, brushedAlbumIds, viewportYearRange, searchMatchedAlbumIds, searchQuery, selectedGenre],
         getLineWidth: [selectedAlbumId, clickedAlbum],
         getRadius: [selectedAlbumId, clickedAlbum],
         getPosition: [scales]
       }
     })];
-  }, [filteredAlbums, selectedAlbumId, brushedAlbumIds, viewportYearRange, scales, selectAlbum, showGrid, searchMatchedAlbumIds, searchQuery, clickedAlbum]);
+  }, [filteredAlbums, selectedAlbumId, brushedAlbumIds, viewportYearRange, scales, selectAlbum, searchMatchedAlbumIds, searchQuery, clickedAlbum, selectedGenre]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -1037,13 +983,6 @@ export const MapCanvas: React.FC = () => {
             }
             
             // 그리드 표시 (줌/팬 중)
-            setShowGrid(true);
-            if (fadeTimerRef.current) {
-              clearTimeout(fadeTimerRef.current);
-            }
-            fadeTimerRef.current = setTimeout(() => {
-              setShowGrid(false);
-            }, 3000);
             
             // 애니메이션 중이면 업데이트 무시
             if (isAnimating) {
@@ -1053,31 +992,36 @@ export const MapCanvas: React.FC = () => {
             
             // Zoom 제한 적용 (최대 6 = 약 1년이 화면에 꽉 참)
             let zoom = newViewState.zoom;
-            zoom = Math.max(0.2, Math.min(6, zoom));
+            const minZoom = minZoomRef.current ?? -2;
+            zoom = Math.max(minZoom, Math.min(6, zoom));
             
             // 경계 제한 (드래그만 제한, 줌은 자유롭게)
             const zoomScale = Math.pow(2, zoom);
             const visibleWorldWidth = WORLD_WIDTH / zoomScale;
             const visibleWorldHeight = WORLD_HEIGHT / zoomScale;
+
+            const panPaddingX = WORLD_WIDTH * 0.22;
+            const panPaddingY = WORLD_HEIGHT * 0.12;
+            const allowPanAtZoom = zoom > -20.0;
             
             // X축 경계 제한 (부드럽게)
             let targetX = newViewState.target[0];
             const halfVisibleX = visibleWorldWidth / 2;
-            if (halfVisibleX < WORLD_WIDTH / 2) {
+            if (allowPanAtZoom && halfVisibleX < WORLD_WIDTH / 2) {
               // 줌인 상태: 범위 내로 제한
-              targetX = Math.max(halfVisibleX, Math.min(WORLD_WIDTH - halfVisibleX, targetX));
+              targetX = Math.max(halfVisibleX - panPaddingX, Math.min(WORLD_WIDTH - halfVisibleX + panPaddingX, targetX));
             } else {
               // 줌아웃 상태: 중앙 고정
-              targetX = WORLD_WIDTH / 2;
+              targetX = baseTargetRef.current[0];
             }
             
             // Y축 경계 제한 (부드럽게)
             let targetY = newViewState.target[1];
             const halfVisibleY = visibleWorldHeight / 2;
-            if (halfVisibleY < WORLD_HEIGHT / 2) {
-              targetY = Math.max(halfVisibleY, Math.min(WORLD_HEIGHT - halfVisibleY, targetY));
+            if (allowPanAtZoom && halfVisibleY < WORLD_HEIGHT / 2) {
+              targetY = Math.max(halfVisibleY - panPaddingY, Math.min(WORLD_HEIGHT - halfVisibleY + panPaddingY, targetY));
             } else {
-              targetY = WORLD_HEIGHT / 2;
+              targetY = baseTargetRef.current[1];
             }
             
             // 일반 줌/팬: 즉시 반응
@@ -1102,6 +1046,7 @@ export const MapCanvas: React.FC = () => {
             scrollZoom: { speed: 0.005, smooth: true },
             inertia: 600,
             dragPan: true,
+            zoomAroundPointer: true,
             dragRotate: false,
             doubleClickZoom: false,
             keyboard: false,
@@ -1111,17 +1056,21 @@ export const MapCanvas: React.FC = () => {
           views={new OrthographicView({ 
             id: 'ortho',
             controller: {
-              scrollZoom: { speed: 0.005, smooth: true }
+              scrollZoom: { speed: 0.005, smooth: true },
+              zoomAroundPointer: true
             }
           })}
           onClick={(info: PickingInfo) => {
-            console.log('🔥 DeckGL onClick:', info);
+            console.log('?? DeckGL onClick:', info);
             if (info.object) {
               const album = info.object as Album;
-              console.log('🎵 Clicked album:', album.title);
+              console.log('?? Clicked album:', album.title);
               setClickedAlbum({ x: info.x, y: info.y, album });
             } else {
               setClickedAlbum(null);
+              if (selectedGenre) {
+                useStore.getState().setSelectedGenre(null);
+              }
             }
           }}
           getCursor={() => 'grab'}

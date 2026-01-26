@@ -4,21 +4,6 @@ import { useStore } from '../../state/store';
 import { Album } from '../../types';
 
 // 장르별 색상 (주요 장르만 표시)
-const GENRE_COLORS: Record<string, string> = {
-  'Rock': '#EF4444',
-  'Alternative': '#FB923C', 
-  'Pop': '#EC4899',
-  'Electronic': '#A855F7',
-  'Hip Hop': '#EAB308',
-  'R&B': '#84CC16',
-  'Jazz': '#3B82F6',
-  'Folk': '#86EFAC',
-  'K-Pop': '#F472B6',
-  'Other': '#94A3B8'
-};
-
-const MAIN_GENRES = ['Rock', 'Alternative', 'Pop', 'Electronic', 'Hip Hop', 'R&B', 'Jazz', 'Folk', 'K-Pop'];
-
 export const TimelineBar: React.FC = () => {
   const { albums, viewportYearRange, setViewport } = useStore();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -117,7 +102,7 @@ export const TimelineBar: React.FC = () => {
       .append("rect")
       .attr("x", d => xScale(d.year))
       .attr("y", d => yScale(d.count))
-      .attr("width", Math.max(1, chartWidth / data.length - 1))
+      .attr("width", Math.max(1, chartWidth / data.length + 0.5))
       .attr("height", d => height - yScale(d.count))
       .attr("fill", d => {
         const inViewport = d.year >= viewportYearRange[0] && d.year <= viewportYearRange[1];
@@ -154,9 +139,9 @@ export const TimelineBar: React.FC = () => {
       .attr("y1", 0)
       .attr("x2", xScale(viewportYearRange[0]))
       .attr("y2", height)
-      .attr("stroke", "#000000")
-      .attr("stroke-width", 2)
-      .attr("opacity", 0.8);
+      .attr("stroke", "#111111")
+      .attr("stroke-width", 3)
+      .attr("opacity", 1);
     
     // 뷰포트 경계선 (오른쪽)
     viewportOverlay.append("line")
@@ -164,29 +149,16 @@ export const TimelineBar: React.FC = () => {
       .attr("y1", 0)
       .attr("x2", xScale(viewportYearRange[1]))
       .attr("y2", height)
-      .attr("stroke", "#000000")
-      .attr("stroke-width", 2)
-      .attr("opacity", 0.8);
+      .attr("stroke", "#111111")
+      .attr("stroke-width", 3)
+      .attr("opacity", 1);
 
   }, [albums, viewportYearRange]);
 
   return (
     <div className="w-full space-y-2">
       {/* 장르 색상 인덱스 (축소) */}
-      <div className="flex justify-between items-center px-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider mr-1">Genres:</span>
-          {MAIN_GENRES.slice(0, 6).map(genre => (
-            <div key={genre} className="flex items-center gap-1">
-              <div 
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: GENRE_COLORS[genre] }}
-              />
-              <span className="text-[8px] text-gray-600 font-medium">{genre}</span>
-            </div>
-          ))}
-        </div>
-        
+      <div className="flex justify-end items-center px-2">
         {/* 연도 드롭박스 (동적 옵션) */}
         <div className="flex items-center gap-2">
           {/* 왼쪽: 1950 ~ 선택된 끝 연도 */}
@@ -216,8 +188,8 @@ export const TimelineBar: React.FC = () => {
       </div>
 
       {/* Histogram SVG (축소) */}
-      <div className="h-8 w-full">
-        <svg ref={svgRef} className="w-full h-full overflow-visible" />
+      <div className="h-8 w-full px-2">
+        <svg ref={svgRef} className="w-full h-full overflow-hidden" />
       </div>
     </div>
   );

@@ -19,6 +19,9 @@ dotenv.config();
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const SPOTIFY_MIN_INTERVAL_MS = Number(process.env.SPOTIFY_MIN_INTERVAL_MS || "200");
+const SPOTIFY_MAX_RETRIES = Number(process.env.SPOTIFY_MAX_RETRIES || "6");
+const SPOTIFY_BATCH_DELAY_MS = Number(process.env.SPOTIFY_BATCH_DELAY_MS || "200");
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error("❌ Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env");
@@ -31,6 +34,17 @@ const MB_CACHE_FILE = path.resolve("./out/mb_cache.json");
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+let lastRequestAt = 0;
+async function throttleSpotify() {
+  const now = Date.now();
+  const waitFor = lastRequestAt + SPOTIFY_MIN_INTERVAL_MS - now;
+  if (waitFor > 0) {
+    const jitter = Math.floor(Math.random() * 60);
+    await sleep(waitFor + jitter);
+  }
+  lastRequestAt = Date.now();
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
@@ -56,6 +70,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
 async function fetchJson(url, options = {}, retry = 0) {
   let res;
   try {
+    await throttleSpotify();
     res = await fetchWithTimeout(url, options, 30000);
   } catch (error) {
     console.log(`  ⚠️  요청 실패: ${error.message}`);
@@ -65,14 +80,19 @@ async function fetchJson(url, options = {}, retry = 0) {
   // Rate limit 처리
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get("retry-after") || "1");
-    console.log(`  ⏳ Rate limit - ${retryAfter}초 대기 중...`);
-    await sleep((retryAfter + 0.2) * 1000);
-    return fetchJson(url, options, retry);
+    if (retry >= SPOTIFY_MAX_RETRIES) {
+      throw new Error(`Rate limit exceeded after ${retry} retries`);
+    }
+    const backoff = Math.min(15000, (retry + 1) * 800);
+    const waitMs = Math.max(retryAfter * 1000, backoff);
+    console.log(`  ⏳ Rate limit - ${Math.round(waitMs)}ms 대기 후 재시도 (${retry + 1}/${SPOTIFY_MAX_RETRIES})`);
+    await sleep(waitMs + Math.floor(Math.random() * 200));
+    return fetchJson(url, options, retry + 1);
   }
 
   // 서버 에러 재시도
-  if (res.status >= 500 && retry < 3) {
-    console.log(`  🔄 서버 에러 (${res.status}) - 재시도 ${retry + 1}/3`);
+  if (res.status >= 500 && retry < SPOTIFY_MAX_RETRIES) {
+    console.log(`  🔄 서버 에러 (${res.status}) - 재시도 ${retry + 1}/${SPOTIFY_MAX_RETRIES}`);
     await sleep((retry + 1) * 400);
     return fetchJson(url, options, retry + 1);
   }
@@ -334,7 +354,7 @@ async function main() {
 
     // Rate limit 방지를 위한 대기
     if (i + batchSize < artistIdsArray.length) {
-      await sleep(100);
+      await sleep(SPOTIFY_BATCH_DELAY_MS);
     }
 
     // 진행상황 저장 (50개 배치마다)

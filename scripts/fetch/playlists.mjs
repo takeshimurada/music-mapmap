@@ -7,6 +7,9 @@ dotenv.config();
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const TARGET_ALBUMS = Number(process.env.TARGET_ALBUMS || "1500");
+const SPOTIFY_MIN_INTERVAL_MS = Number(process.env.SPOTIFY_MIN_INTERVAL_MS || "200");
+const SPOTIFY_MAX_RETRIES = Number(process.env.SPOTIFY_MAX_RETRIES || "6");
+const SPOTIFY_BATCH_DELAY_MS = Number(process.env.SPOTIFY_BATCH_DELAY_MS || "200");
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env");
@@ -22,13 +25,34 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchJson(url, options = {}) {
+let lastRequestAt = 0;
+async function throttleSpotify() {
+  const now = Date.now();
+  const waitFor = lastRequestAt + SPOTIFY_MIN_INTERVAL_MS - now;
+  if (waitFor > 0) {
+    const jitter = Math.floor(Math.random() * 60);
+    await sleep(waitFor + jitter);
+  }
+  lastRequestAt = Date.now();
+}
+
+async function fetchJson(url, options = {}, retry = 0) {
+  await throttleSpotify();
   const res = await fetch(url, options);
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get("retry-after") || "1");
-    console.warn(`⏳ Rate limited. Waiting ${retryAfter}s...`);
-    await sleep(retryAfter * 1000);
-    return fetchJson(url, options);
+    if (retry >= SPOTIFY_MAX_RETRIES) {
+      throw new Error(`Rate limit exceeded after ${retry} retries`);
+    }
+    const backoff = Math.min(15000, (retry + 1) * 800);
+    const waitMs = Math.max(retryAfter * 1000, backoff);
+    console.warn(`⏳ Rate limited. Waiting ${Math.round(waitMs)}ms...`);
+    await sleep(waitMs + Math.floor(Math.random() * 200));
+    return fetchJson(url, options, retry + 1);
+  }
+  if (res.status >= 500 && retry < SPOTIFY_MAX_RETRIES) {
+    await sleep((retry + 1) * 400);
+    return fetchJson(url, options, retry + 1);
   }
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -130,7 +154,7 @@ async function getArtistsBatch(token, artistIds) {
         artistsMap[artist.id] = artist;
       }
     }
-    await sleep(120);
+    await sleep(SPOTIFY_BATCH_DELAY_MS);
   }
   return artistsMap;
 }

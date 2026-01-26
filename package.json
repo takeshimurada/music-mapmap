@@ -25,6 +25,7 @@
     "pipeline:all": "npm run pipeline:process && npm run pipeline:import && npm run pipeline:covers",
     "pipeline:full": "npm run db:backup && npm run pipeline:cleanup && npm run fetch:spotify && npm run pipeline:all && npm run fetch:metadata && npm run metadata:import && npm run db:backup",
     "pipeline:safe": "bash scripts/pipeline-safe.sh",
+    "pipeline:safe:ps": "powershell -ExecutionPolicy Bypass -File scripts/pipeline-safe.ps1",
     "db:backup-render": "bash scripts/db/backup/backup-render.sh",
     "db:compare-local-render": "bash scripts/db/maintenance/compare-local-render.sh",
     "db:sync-render": "bash scripts/db/maintenance/sync-render.sh",

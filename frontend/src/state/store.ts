@@ -11,6 +11,7 @@ interface AppState {
   // Filters
   yearRange: [number, number];
   activeRegions: Region[];
+  selectedGenre: string | null;
   searchQuery: string;
 
   // Map View
@@ -25,6 +26,7 @@ interface AppState {
   setYearRange: (range: [number, number]) => void;
   setViewportYearRange: (range: [number, number]) => void;
   toggleRegion: (region: Region) => void;
+  setSelectedGenre: (genre: string | null) => void;
   selectAlbum: (id: string | null) => void;
   setBrushedAlbums: (ids: string[]) => void;
   setSearchQuery: (query: string) => void;
@@ -139,6 +141,7 @@ export const useStore = create<AppState>((set, get) => ({
   searchMatchedAlbumIds: [],
   yearRange: [MIN_YEAR, MAX_YEAR],
   activeRegions: ALL_REGIONS,
+  selectedGenre: null,
   searchQuery: '',
   viewport: { x: (MIN_YEAR + MAX_YEAR) / 2, y: 0.5, k: 1 },
   viewportYearRange: [MIN_YEAR, MAX_YEAR],
@@ -210,6 +213,8 @@ export const useStore = create<AppState>((set, get) => ({
     const newState = { ...state, activeRegions: newRegions };
     return { ...newState, filteredAlbums: applyFilters(newState as AppState) };
   }),
+
+  setSelectedGenre: (genre) => set({ selectedGenre: genre }),
 
   setSearchQuery: (query) => set((state) => {
     const newState = { ...state, searchQuery: query };

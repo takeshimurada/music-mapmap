@@ -8,6 +8,10 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const MARKET = process.env.SPOTIFY_MARKET || ""; // 시장 제한 제거 (글로벌 검색)
 const TARGET_ALBUMS = Number(process.env.TARGET_ALBUMS || "1000"); // 목표 수량
+const SPOTIFY_MIN_INTERVAL_MS = Number(process.env.SPOTIFY_MIN_INTERVAL_MS || "200");
+const SPOTIFY_MAX_RETRIES = Number(process.env.SPOTIFY_MAX_RETRIES || "6");
+const SPOTIFY_ARTIST_BATCH_SIZE = Number(process.env.SPOTIFY_ARTIST_BATCH_SIZE || "50");
+const SPOTIFY_BATCH_DELAY_MS = Number(process.env.SPOTIFY_BATCH_DELAY_MS || "200");
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env");
@@ -20,6 +24,17 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+let lastRequestAt = 0;
+async function throttleSpotify() {
+  const now = Date.now();
+  const waitFor = lastRequestAt + SPOTIFY_MIN_INTERVAL_MS - now;
+  if (waitFor > 0) {
+    const jitter = Math.floor(Math.random() * 60);
+    await sleep(waitFor + jitter);
+  }
+  lastRequestAt = Date.now();
 }
 
 // 타임아웃이 있는 fetch wrapper
@@ -48,6 +63,7 @@ async function fetchJson(url, options = {}, retry = 0) {
   
   let res;
   try {
+    await throttleSpotify();
     res = await fetchWithTimeout(url, options, 30000); // 30초 타임아웃
   } catch (error) {
     console.log(`  ⚠️  요청 실패: ${error.message}`);
@@ -57,14 +73,19 @@ async function fetchJson(url, options = {}, retry = 0) {
   // basic rate limit handling
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get("retry-after") || "1");
-    console.log(`  ⏳ Rate limit - ${retryAfter}초 대기 중...`);
-    await sleep((retryAfter + 0.2) * 1000);
-    return fetchJson(url, options, retry);
+    if (retry >= SPOTIFY_MAX_RETRIES) {
+      throw new Error(`Rate limit exceeded after ${retry} retries`);
+    }
+    const backoff = Math.min(15000, (retry + 1) * 800);
+    const waitMs = Math.max(retryAfter * 1000, backoff);
+    console.log(`  ⏳ Rate limit - ${Math.round(waitMs)}ms 대기 후 재시도 (${retry + 1}/${SPOTIFY_MAX_RETRIES})`);
+    await sleep(waitMs + Math.floor(Math.random() * 200));
+    return fetchJson(url, options, retry + 1);
   }
 
   // retry on transient errors
-  if (res.status >= 500 && retry < 3) {
-    console.log(`  🔄 서버 에러 (${res.status}) - 재시도 ${retry + 1}/3`);
+  if (res.status >= 500 && retry < SPOTIFY_MAX_RETRIES) {
+    console.log(`  🔄 서버 에러 (${res.status}) - 재시도 ${retry + 1}/${SPOTIFY_MAX_RETRIES}`);
     await sleep((retry + 1) * 400);
     return fetchJson(url, options, retry + 1);
   }
@@ -119,6 +140,30 @@ async function getArtist(token, artistId) {
   return fetchJson(url, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function getArtistsBatch(token, artistIds) {
+  if (!artistIds.length) return [];
+  const batchSize = Math.max(1, Math.min(50, SPOTIFY_ARTIST_BATCH_SIZE));
+  const chunks = chunkArray(artistIds, batchSize);
+  const results = [];
+  for (const chunk of chunks) {
+    const url = `https://api.spotify.com/v1/artists?ids=${chunk.join(",")}`;
+    const json = await fetchJson(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (json?.artists) {
+      results.push(...json.artists.filter(Boolean));
+    }
+    await sleep(SPOTIFY_BATCH_DELAY_MS);
+  }
+  return results;
+}
+
 function normalizeAlbum(rawAlbum, artist) {
   const releaseDate = rawAlbum.release_date || null;
   const year = releaseDate ? Number(String(releaseDate).slice(0, 4)) : null;
@@ -157,7 +202,7 @@ function buildQueries() {
   
   
   // 1973~1979년
-  for (let y = 1980; y <= 1989; y++) {
+  for (let y = 2005; y <= 2010; y++) {
     queries.push(`year:${y}`);
   }
 
@@ -222,6 +267,22 @@ async function main() {
       }
 
       const items = json?.albums?.items || [];
+      const newArtistIds = [];
+      for (const album of items) {
+        const artistId = album.artists?.[0]?.id;
+        if (artistId && !artistCache.has(artistId)) {
+          newArtistIds.push(artistId);
+        }
+      }
+      if (newArtistIds.length > 0) {
+        const uniqueArtistIds = Array.from(new Set(newArtistIds));
+        const artists = await getArtistsBatch(token, uniqueArtistIds);
+        for (const artist of artists) {
+          if (artist?.id) {
+            artistCache.set(artist.id, artist);
+          }
+        }
+      }
       console.log(`  📦 검색 결과: ${items.length}개 앨범`);
       
       if (items.length === 0) {
@@ -267,9 +328,10 @@ async function main() {
         
         const releaseYear = album.release_date ? Number(String(album.release_date).slice(0, 4)) : null;
         // 1955-1970 클래식 시대: 인기도 필터 완화
-        const minPopularity = (releaseYear && releaseYear <= 1970) ? 15 : 
-                              (releaseYear && releaseYear <= 1985) ? 20 : 
-                              (releaseYear && releaseYear <= 1995) ? 30 : 35;
+        const minPopularity = (releaseYear && releaseYear <= 1970) ? 20 : 
+                              (releaseYear && releaseYear <= 1985) ? 28 : 
+                              (releaseYear && releaseYear <= 1995) ? 38 : 
+                              (releaseYear && releaseYear <= 2005) ? 45 : 50;
         
         if (artist.popularity && artist.popularity < minPopularity) {
           continue;
