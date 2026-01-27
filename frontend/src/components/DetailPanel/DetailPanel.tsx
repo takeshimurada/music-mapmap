@@ -31,7 +31,7 @@ const REGION_COLORS: Record<string, string> = {
 type Tab = 'log' | 'context' | 'tracks' | 'credits' | 'reviews';
 
 export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) => {
-  const { selectedAlbumId, albums, selectAlbum } = useStore();
+  const { selectedAlbumId, albums, selectAlbum, selectArtist } = useStore();
   const resolvedAlbumId = albumId ?? selectedAlbumId;
   
   // Data State
@@ -45,7 +45,7 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
   
   // User Log State
   const [userLog, setUserLog] = useState<UserLog>({ rating: 0, memo: '', updatedAt: '' });
-  const [isLogDirty, setIsLogDirty] = useState(false);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
   
   // Step 1: Like State
   const [isLiked, setIsLiked] = useState(false);
@@ -88,6 +88,14 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
     }
   };
 
+  const saveUserLog = useCallback((nextLog: UserLog) => {
+    if (!album) return;
+    const now = new Date().toISOString();
+    const saved = { ...nextLog, updatedAt: now };
+    setUserLog(saved);
+    localStorage.setItem(`log-${album.id}`, JSON.stringify(saved));
+  }, [album?.id]);
+
   // Step 1: Like 토글 함수 + 자동 5점 평가
   const handleLikeToggle = async () => {
     if (!album || likeLoading) return;
@@ -115,14 +123,12 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
         
         // ⭐ 새로 Like할 때 자동으로 5점 평가 저장
         if (!isLiked) {
-          const now = new Date().toISOString();
           const autoLog = {
             rating: 5,
             memo: userLog.memo || '',
-            updatedAt: now
+            updatedAt: ''
           };
-          localStorage.setItem(`log-${album.id}`, JSON.stringify(autoLog));
-          setUserLog(autoLog);
+          saveUserLog(autoLog);
           console.log('⭐ Auto-rated 5 stars for liked album:', album.id);
         }
       }
@@ -168,7 +174,6 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
       } else {
         setUserLog({ rating: 0, memo: '', updatedAt: '' });
       }
-      setIsLogDirty(false);
       
       // Step 1: view_album 이벤트 로깅 (중복 방지)
       if (lastViewedAlbumRef.current !== album.id) {
@@ -201,17 +206,6 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
     }
   }, [album?.id, handleResearch]);
 
-  // Handle User Log Save
-  const handleSaveLog = () => {
-    if (!album) return;
-    const now = new Date().toISOString();
-    const newLog = { ...userLog, updatedAt: now };
-    setUserLog(newLog);
-    localStorage.setItem(`log-${album.id}`, JSON.stringify(newLog));
-    setIsLogDirty(false);
-    alert("Log saved!");
-  };
-
   if (!album) {
     return (
       <div className="h-full w-full flex items-center justify-center text-gray-400 text-sm flex-col gap-4">
@@ -230,7 +224,7 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
         <img 
           src={album.coverUrl} 
           alt={album.title} 
-          className="w-full h-full object-contain bg-gray-100 opacity-100 transition-transform duration-700 group-hover:scale-105"
+          className="w-full h-full object-contain bg-gray-100 opacity-100"
         />
         <button 
           onClick={() => selectAlbum(null)}
@@ -259,30 +253,28 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-black leading-tight mb-1 truncate drop-shadow-sm">{album.title}</h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-700 font-medium truncate drop-shadow-sm">{album.artist}</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                selectAlbum(null);
+                selectArtist(album.artist);
+              }}
+              className="group relative text-sm sm:text-base md:text-lg text-gray-900 font-semibold tracking-tight truncate"
+              title="View artist"
+            >
+              <span className="inline-flex items-center gap-2 border-b border-transparent group-hover:border-black transition-colors">
+                {album.artist}
+                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 group-hover:text-gray-700">Artist</span>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 1.5. Action Buttons (한 줄로 압축) */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-1.5">
-          {/* Like */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleLikeToggle();
-            }}
-            disabled={likeLoading}
-            className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg font-bold text-[10px] transition-all ${
-              isLiked 
-                ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white' 
-                : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
-            } ${likeLoading ? 'opacity-50 cursor-wait' : ''}`}
-          >
-            <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} strokeWidth={2.5} />
-            <span className="hidden sm:inline">{isLiked ? 'Liked' : 'Like'}</span>
-          </button>
-          
           {/* 듣고싶어요 */}
           <button
             onClick={(e) => {
@@ -509,18 +501,47 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
             <div className="space-y-3">
               <label className="text-sm font-bold text-slate-400 uppercase tracking-wider block">Your Rating</label>
               <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button 
-                    key={star}
-                    onClick={() => {
-                      setUserLog(prev => ({ ...prev, rating: star }));
-                      setIsLogDirty(true);
-                    }}
-                    className={`p-1 transition-transform hover:scale-110 ${star <= userLog.rating ? 'text-yellow-400' : 'text-slate-700'}`}
-                  >
-                    <Star fill={star <= userLog.rating ? "currentColor" : "none"} size={28} />
-                  </button>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const activeRating = hoverRating ?? userLog.rating;
+                  const isFull = activeRating >= star;
+                  const isHalf = activeRating >= star - 0.5 && activeRating < star;
+                  return (
+                    <div key={star} className="relative w-7 h-7">
+                      <Star
+                        size={28}
+                        className={isFull || isHalf ? 'text-yellow-400' : 'text-slate-700'}
+                        fill={isFull ? 'currentColor' : 'none'}
+                      />
+                      {isHalf && (
+                        <div className="absolute inset-0 overflow-hidden w-1/2">
+                          <Star size={28} className="text-yellow-400" fill="currentColor" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Rate ${star - 0.5} stars`}
+                        className="absolute inset-y-0 left-0 w-1/2"
+                        onMouseEnter={() => setHoverRating(star - 0.5)}
+                        onMouseLeave={() => setHoverRating(null)}
+                        onClick={() => {
+                          const next = { ...userLog, rating: star - 0.5 };
+                          saveUserLog(next);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Rate ${star} stars`}
+                        className="absolute inset-y-0 right-0 w-1/2"
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(null)}
+                        onClick={() => {
+                          const next = { ...userLog, rating: star };
+                          saveUserLog(next);
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -529,12 +550,14 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
               <textarea 
                 id="album-memo"
                 name="memo"
-                className="w-full h-32 bg-black/20 border border-slate-700 rounded-xl p-4 text-sm text-slate-200 focus:ring-1 focus:ring-accent focus:border-accent outline-none resize-none placeholder-slate-600"
+                className="w-full h-32 bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-800 focus:ring-2 focus:ring-black/10 focus:border-black outline-none resize-none placeholder-gray-400"
                 placeholder="Write your thoughts about this album..."
                 value={userLog.memo}
                 onChange={(e) => {
                   setUserLog(prev => ({ ...prev, memo: e.target.value }));
-                  setIsLogDirty(true);
+                }}
+                onBlur={() => {
+                  saveUserLog({ ...userLog, memo: userLog.memo });
                 }}
               />
             </div>
@@ -545,17 +568,6 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
                </div>
             )}
 
-            <button 
-              onClick={handleSaveLog}
-              disabled={!isLogDirty}
-              className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${
-                isLogDirty 
-                  ? 'bg-accent text-white hover:bg-accent-hover shadow-lg shadow-accent/20' 
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              {isLogDirty ? 'Save to My Log' : 'Saved'}
-            </button>
           </div>
         )}
       </div>

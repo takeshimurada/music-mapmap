@@ -5,6 +5,7 @@ interface AppState {
   albums: Album[];
   filteredAlbums: Album[];
   selectedAlbumId: string | null;
+  selectedArtist: string | null;
   brushedAlbumIds: string[]; // IDs selected via brush tool
   searchMatchedAlbumIds: string[]; // IDs matched by search (for highlighting)
   
@@ -28,6 +29,7 @@ interface AppState {
   toggleRegion: (region: Region) => void;
   setSelectedGenre: (genre: string | null) => void;
   selectAlbum: (id: string | null) => void;
+  selectArtist: (name: string | null) => void;
   setBrushedAlbums: (ids: string[]) => void;
   setSearchQuery: (query: string) => void;
   setViewport: (viewport: Viewport | ((prev: Viewport) => Viewport)) => void;
@@ -40,9 +42,11 @@ const ALL_REGIONS: Region[] = ['North America', 'Europe', 'Asia', 'South America
 
 const applyFilters = (state: AppState): Album[] => {
   return state.albums.filter(album => {
-    // 지역 필터만 적용, 연도 필터는 투명도로만 처리 (모든 노드 표시)
+    // 지역 + 장르 필터 적용 (연도 필터는 투명도로만 처리)
     const inRegion = state.activeRegions.includes(album.region);
-    return inRegion;
+    const albumGenre = album.genres?.[0] || 'Unknown';
+    const inGenre = !state.selectedGenre || albumGenre === state.selectedGenre;
+    return inRegion && inGenre;
   });
 };
 
@@ -137,6 +141,7 @@ export const useStore = create<AppState>((set, get) => ({
   albums: [],
   filteredAlbums: [],
   selectedAlbumId: null,
+  selectedArtist: null,
   brushedAlbumIds: [],
   searchMatchedAlbumIds: [],
   yearRange: [MIN_YEAR, MAX_YEAR],
@@ -214,7 +219,10 @@ export const useStore = create<AppState>((set, get) => ({
     return { ...newState, filteredAlbums: applyFilters(newState as AppState) };
   }),
 
-  setSelectedGenre: (genre) => set({ selectedGenre: genre }),
+  setSelectedGenre: (genre) => set((state) => {
+    const newState = { ...state, selectedGenre: genre };
+    return { ...newState, filteredAlbums: applyFilters(newState as AppState) };
+  }),
 
   setSearchQuery: (query) => set((state) => {
     const newState = { ...state, searchQuery: query };
@@ -227,7 +235,8 @@ export const useStore = create<AppState>((set, get) => ({
     };
   }),
 
-  selectAlbum: (id) => set({ selectedAlbumId: id }),
+  selectAlbum: (id) => set((state) => ({ selectedAlbumId: id, selectedArtist: id ? null : state.selectedArtist })),
+  selectArtist: (name) => set({ selectedArtist: name }),
   setBrushedAlbums: (ids) => set({ brushedAlbumIds: ids }),
   
   setViewport: (vp) => set((state) => ({

@@ -6,10 +6,11 @@ import { Album } from '../../types';
 type SearchBarVariant = 'default' | 'embedded';
 
 export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boolean }> = ({ variant = 'default', autoFocus = false }) => {
-  const { searchQuery, setSearchQuery, selectAlbum, albums, setViewport, setBrushedAlbums } = useStore();
+  const { searchQuery, setSearchQuery, selectAlbum, selectArtist, albums, setViewport, setBrushedAlbums } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Album[]>([]);
   const [artistSuggestions, setArtistSuggestions] = useState<string[]>([]);
+  const [artistImages, setArtistImages] = useState<Record<string, string>>({});
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<{ type: 'album' | 'artist', data: Album | string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,9 +51,44 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
   }, [searchQuery, albums]);
 
   useEffect(() => {
+    if (artistSuggestions.length === 0) return;
+    let cancelled = false;
+
+    const fetchImages = async () => {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        artistSuggestions.map(async (artist) => {
+          if (artistImages[artist]) return;
+          try {
+            const res = await fetch(`${BACKEND_URL}/artists/lookup?name=${encodeURIComponent(artist)}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const url = data?.data?.image_url;
+            if (url) updates[artist] = url;
+          } catch {
+            // ignore
+          }
+        })
+      );
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setArtistImages((prev) => ({ ...prev, ...updates }));
+      }
+    };
+
+    fetchImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [artistSuggestions, artistImages]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setSearchQuery('');
+        setSuggestions([]);
+        setArtistSuggestions([]);
+        setSelectedItem(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -110,6 +146,8 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
     setSearchQuery(artist);
     setSelectedItem({ type: 'artist', data: artist });
     setIsOpen(false);
+    selectAlbum(null);
+    selectArtist(artist);
   };
   
   const handleViewOnMap = () => {
@@ -340,8 +378,12 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
                           onClick={() => handleSelectArtist(artist)}
                           className="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded group transition-all"
                         >
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                            <Music size={16} className="text-gray-400" />
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform overflow-hidden">
+                            {artistImages[artist] ? (
+                              <img src={artistImages[artist]} alt={artist} className="w-full h-full object-cover" />
+                            ) : (
+                              <Music size={16} className="text-gray-400" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-black truncate">{artist}</div>

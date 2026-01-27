@@ -14,19 +14,23 @@ interface SavedLog {
   updatedAt: string;
 }
 
-type TabType = 'wishlist' | 'rated';
+type CategoryType = 'albums' | 'artists';
+type AlbumTabType = 'wishlist' | 'rated';
 
 export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('wishlist');
+  const [category, setCategory] = useState<CategoryType>('albums');
+  const [albumTab, setAlbumTab] = useState<AlbumTabType>('wishlist');
   const [likes, setLikes] = useState<LikeItem[]>([]);
+  const [artistLikes, setArtistLikes] = useState<LikeItem[]>([]);
   const [logs, setLogs] = useState<SavedLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'rating'>('date');
   const [loading, setLoading] = useState(false);
-  const { albums, selectAlbum } = useStore();
+  const { albums, selectAlbum, selectArtist } = useStore();
 
   useEffect(() => {
     loadLikes();
+    loadArtistLikes();
     loadAllLogs();
   }, [albums]);
 
@@ -47,6 +51,24 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       }
     } catch (error) {
       console.error('❌ Error loading likes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadArtistLikes = async () => {
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${BACKEND_URL}/me/likes?entity_type=artist`, {
+        headers,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setArtistLikes(data.items || []);
+      }
+    } catch (error) {
+      console.error('❌ Error loading artist likes:', error);
     } finally {
       setLoading(false);
     }
@@ -114,6 +136,11 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
            album.artist.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
+  const filteredArtistLikes = artistLikes.filter(like => {
+    const artistName = like.entity_id.replace(/^spotify:artist:/, '');
+    return artistName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 배경 클릭 시 닫기 */}
@@ -137,40 +164,26 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {/* Tabs - 미니멀하고 시크하게 */}
           <div className="flex gap-1 mt-4">
             <button
-              onClick={() => setActiveTab('wishlist')}
+              onClick={() => setCategory('albums')}
               className={`flex-1 px-4 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 rounded ${
-                activeTab === 'wishlist'
+                category === 'albums'
                   ? 'bg-black text-white'
                   : 'text-gray-500 hover:text-black hover:bg-gray-50'
               }`}
             >
-              <Heart size={14} fill={activeTab === 'wishlist' ? 'white' : 'none'} strokeWidth={2} />
-              Wishlist
-              {likes.length > 0 && (
-                <span className={`ml-1 text-xs ${
-                  activeTab === 'wishlist' ? 'text-white/70' : 'text-gray-400'
-                }`}>
-                  {likes.length}
-                </span>
-              )}
+              <Heart size={14} fill={category === 'albums' ? 'white' : 'none'} strokeWidth={2} />
+              Albums
             </button>
             <button
-              onClick={() => setActiveTab('rated')}
+              onClick={() => setCategory('artists')}
               className={`flex-1 px-4 py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 rounded ${
-                activeTab === 'rated'
+                category === 'artists'
                   ? 'bg-black text-white'
                   : 'text-gray-500 hover:text-black hover:bg-gray-50'
               }`}
             >
-              <Star size={14} fill={activeTab === 'rated' ? 'white' : 'none'} strokeWidth={2} />
-              Rated
-              {logs.length > 0 && (
-                <span className={`ml-1 text-xs ${
-                  activeTab === 'rated' ? 'text-white/70' : 'text-gray-400'
-                }`}>
-                  {logs.length}
-                </span>
-              )}
+              <Heart size={14} fill={category === 'artists' ? 'white' : 'none'} strokeWidth={2} />
+              Artists
             </button>
           </div>
 
@@ -188,7 +201,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-black placeholder-gray-400 focus:outline-none focus:bg-white focus:border-black transition-all"
               />
             </div>
-            {activeTab === 'rated' && (
+            {category === 'albums' && albumTab === 'rated' && (
               <select
                 id="my-sort"
                 name="sort"
@@ -203,7 +216,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <option value="rating">Rating</option>
               </select>
             )}
-            {activeTab === 'wishlist' && (
+            {category === 'albums' && albumTab === 'wishlist' && (
               <button
                 onClick={loadLikes}
                 disabled={loading}
@@ -215,10 +228,33 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Content - 여백 줄임 */}
+        {category === 'albums' && (
+          <div className="px-6 -mt-2 pb-2">
+            <div className="relative w-full bg-gray-100 border border-gray-200 rounded-full p-1 overflow-hidden">
+              <div
+                className={"absolute top-1 bottom-1 w-1/2 rounded-full bg-white shadow-sm transition-transform duration-300 " + (albumTab === 'rated' ? 'translate-x-full' : 'translate-x-0')}
+              />
+              <div className="relative z-10 flex">
+                <button
+                  onClick={() => setAlbumTab('wishlist')}
+                  className={"flex-1 py-2 text-xs font-semibold transition-colors " + (albumTab === 'wishlist' ? 'text-black' : 'text-gray-500')}
+                >
+                  Wishlist
+                </button>
+                <button
+                  onClick={() => setAlbumTab('rated')}
+                  className={"flex-1 py-2 text-xs font-semibold transition-colors " + (albumTab === 'rated' ? 'text-black' : 'text-gray-500')}
+                >
+                  Rated
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content - ?? ?? */}
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
-          {activeTab === 'wishlist' ? (
-            // Wishlist Tab
+          {category === 'albums' && albumTab === 'wishlist' && (
             loading ? (
               <div className="flex items-center justify-center py-20">
                 <RefreshCw size={32} className="text-gray-400 animate-spin" />
@@ -249,7 +285,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                           {album.title}
                         </h3>
                         <p className="text-gray-500 text-xs truncate mb-2">
-                          {album.artist} • {album.year}
+                          {album.artist} ? {album.year}
                         </p>
                         <div className="flex items-center gap-2 text-[10px] text-gray-400">
                           <Calendar size={12} />
@@ -264,8 +300,9 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 );
               })
             )
-          ) : (
-            // Rated Albums Tab
+          )}
+
+          {category === 'albums' && albumTab === 'rated' && (
             filteredLogs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-16">
                 <Star size={32} className="text-gray-300 mb-3" />
@@ -290,7 +327,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             {log.albumTitle}
                           </h3>
                           <p className="text-gray-500 text-xs truncate">
-                            {log.albumArtist} • {log.albumYear}
+                            {log.albumArtist} ? {log.albumYear}
                           </p>
                         </div>
                         <button 
@@ -338,12 +375,65 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               ))
             )
           )}
+
+          {category === 'artists' && (
+            loading ? (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw size={32} className="text-gray-400 animate-spin" />
+              </div>
+            ) : filteredArtistLikes.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center py-16">
+                <Heart size={32} className="text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm mb-1">No liked artists</p>
+                <p className="text-gray-400 text-xs">Like artists to add them here</p>
+              </div>
+            ) : (
+              filteredArtistLikes.map((like) => {
+                const artistName = like.entity_id.replace(/^spotify:artist:/, '');
+                const sample = albums.find(a => a.artist === artistName);
+                return (
+                  <div
+                    key={like.entity_id}
+                    onClick={() => {
+                      selectArtist(artistName);
+                      onClose();
+                    }}
+                    className="bg-white border border-gray-200 rounded-lg p-4 hover:border-black hover:shadow-sm transition-all cursor-pointer group"
+                  >
+                    <div className="flex gap-6">
+                      <div className="w-16 h-16 rounded overflow-hidden flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform bg-gray-100">
+                        {sample?.coverUrl ? (
+                          <img src={sample.coverUrl} alt={artistName} className="w-full h-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-black truncate group-hover:text-black transition-colors mb-1">
+                          {artistName}
+                        </h3>
+                        <p className="text-gray-500 text-xs truncate mb-2">
+                          {albums.filter(a => a.artist === artistName).length} albums
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                          <Calendar size={12} />
+                          {new Date(like.liked_at).toLocaleDateString('ko-KR')}
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <Heart size={20} className="text-pink-500 fill-pink-500" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )
+          )}
         </div>
 
         {/* Footer Stats - 제거 또는 슬림하게 */}
         <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
           <div className="flex justify-around text-center">
-            {activeTab === 'wishlist' ? (
+            {category === 'albums' ? (
+              albumTab === 'wishlist' ? (
               <>
                 <div>
                   <div className="text-lg font-bold text-black">{likes.length}</div>
@@ -362,7 +452,7 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">This Week</div>
                 </div>
               </>
-            ) : (
+              ) : (
               <>
                 <div>
                   <div className="text-lg font-bold text-black">{logs.length}</div>
@@ -379,6 +469,26 @@ export const MyPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {logs.filter(l => l.rating >= 4).length}
                   </div>
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">Top</div>
+                </div>
+              </>
+              )
+            ) : (
+              <>
+                <div>
+                  <div className="text-lg font-bold text-black">{artistLikes.length}</div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider">Artists</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-black">
+                    {artistLikes.length > 0 ? Math.round((artistLikes.length / albums.length) * 100) : 0}%
+                  </div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider">Collection</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-black">
+                    {artistLikes.slice(0, 7).length}
+                  </div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wider">This Week</div>
                 </div>
               </>
             )}

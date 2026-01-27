@@ -1,21 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navigation } from '../components/Navigation/Navigation';
 import { DetailPanel } from '../components/DetailPanel/DetailPanel';
+import { ArtistPanel } from '../components/ArtistPanel/ArtistPanel';
 import { SearchBarCompact } from '../components/SearchBar/SearchBarCompact';
 import { MyPanel } from '../components/MyPanel/MyPanel';
 import { useStore } from '../state/store';
 import { Music2, Sparkles } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
-  const { selectedAlbumId, loadAlbums, loading } = useStore();
+  const { selectedAlbumId, selectedArtist, loadAlbums, loading } = useStore();
   const location = useLocation();
   const isArchivePage = location.pathname === '/archive';
   const [showMyPanel, setShowMyPanel] = useState(false);
+  const [panelArtistName, setPanelArtistName] = useState<string | null>(null);
+  const [artistPanelVisible, setArtistPanelVisible] = useState(false);
+  const artistCloseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadAlbums();
   }, []);
+
+  useEffect(() => {
+    if (selectedArtist) {
+      if (artistCloseTimerRef.current) {
+        window.clearTimeout(artistCloseTimerRef.current);
+        artistCloseTimerRef.current = null;
+      }
+      setPanelArtistName(selectedArtist);
+      setArtistPanelVisible(true);
+      return;
+    }
+
+    if (panelArtistName) {
+      setArtistPanelVisible(false);
+      artistCloseTimerRef.current = window.setTimeout(() => {
+        setPanelArtistName(null);
+        artistCloseTimerRef.current = null;
+      }, 300);
+    }
+  }, [selectedArtist, panelArtistName]);
 
   if (loading) {
     return (
@@ -74,6 +98,18 @@ export const AppShell: React.FC = () => {
           />
           <div className="fixed top-20 right-4 md:right-6 z-50 w-[320px] md:w-[400px] max-h-[calc(100vh-6rem)] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-right duration-300 flex flex-col">
             <DetailPanel />
+          </div>
+        </>
+      )}
+
+      {panelArtistName && (
+        <>
+          <div
+            className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-45 transition-opacity duration-300 ease-out ${artistPanelVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => useStore.getState().selectArtist(null)}
+          />
+          <div className={`fixed top-20 right-4 md:right-6 z-50 w-[320px] md:w-[400px] max-h-[calc(100vh-6rem)] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300 ease-out ${artistPanelVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
+            <ArtistPanel artistName={panelArtistName} />
           </div>
         </>
       )}

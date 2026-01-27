@@ -401,6 +401,8 @@ export const MapCanvas: React.FC = () => {
     filteredAlbums, 
     selectedAlbumId, 
     selectAlbum,
+    selectedArtist,
+    selectArtist,
     brushedAlbumIds,
     searchMatchedAlbumIds,
     searchQuery,
@@ -413,7 +415,45 @@ export const MapCanvas: React.FC = () => {
 
   const [hoverInfo, setHoverInfo] = useState<{x: number, y: number, object: Album} | null>(null);
   const [clickedAlbum, setClickedAlbum] = useState<{x: number, y: number, album: Album} | null>(null);
+  const [popupAlbum, setPopupAlbum] = useState<{x: number, y: number, album: Album} | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const popupCloseTimerRef = React.useRef<number | null>(null);
   const popupRef = React.useRef<HTMLDivElement>(null);
+  const lastViewStateRef = React.useRef<{ target: [number, number, number]; zoom: number } | null>(null);
+  const panelCloseRef = React.useRef({ baseZoom: 0, baseTarget: [0, 0, 0] as [number, number, number], active: false });
+
+  useEffect(() => {
+    if (clickedAlbum) {
+      if (popupCloseTimerRef.current) {
+        window.clearTimeout(popupCloseTimerRef.current);
+        popupCloseTimerRef.current = null;
+      }
+      setPopupAlbum(clickedAlbum);
+      setPopupVisible(true);
+      return;
+    }
+
+    if (popupAlbum) {
+      setPopupVisible(false);
+      popupCloseTimerRef.current = window.setTimeout(() => {
+        setPopupAlbum(null);
+        popupCloseTimerRef.current = null;
+      }, 260);
+    }
+  }, [clickedAlbum, popupAlbum]);
+
+  // Panel close baseline for large movements
+  useEffect(() => {
+    if (selectedAlbumId || clickedAlbum || selectedArtist) {
+      panelCloseRef.current = {
+        baseZoom: viewState.zoom,
+        baseTarget: viewState.target as [number, number, number],
+        active: true
+      };
+    } else {
+      panelCloseRef.current.active = false;
+    }
+  }, [selectedAlbumId, clickedAlbum, selectedArtist]);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const minZoomRef = React.useRef(-0.5);
   const baseTargetRef = React.useRef<[number, number, number]>([
@@ -454,14 +494,16 @@ export const MapCanvas: React.FC = () => {
         const heightRatio = effectiveHeight / WORLD_HEIGHT;
         const minRatio = Math.min(widthRatio, heightRatio);
 
-        const initialZoom = Math.log2(minRatio * 0.5);
+        // Fit world to viewport with extra padding so the node field starts more zoomed-out.
+        const paddingScale = width < 640 ? 0.7 : 0.8;
+        const fitZoom = Math.log2(minRatio * paddingScale);
         const aspect = width / height;
         const aspectBias =
           aspect >= 1.6 ? 0.25 :
           aspect <= 0.85 ? -0.2 :
           (aspect - 1.0) * 0.2;
-        const adjustedInitialZoom = initialZoom + aspectBias;
-        const cappedInitialZoom = Math.max(Math.min(adjustedInitialZoom, 0.1), -0.2);
+        const adjustedInitialZoom = fitZoom + aspectBias;
+        const cappedInitialZoom = Math.max(Math.min(adjustedInitialZoom, 0.1), -2.0);
         minZoomRef.current = cappedInitialZoom;
         baseTargetRef.current = [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.5, 0];
 
@@ -896,11 +938,6 @@ export const MapCanvas: React.FC = () => {
             // 검색 매칭 안된 앨범: 블러 처리 (매우 투명하게)
             return [...baseColor, 60] as [number, number, number, number];
           }
-
-          // ?? ?? ?: ?? ?? ?? ??
-          if (selectedGenre && genre !== selectedGenre) {
-            return [...baseColor, 20] as [number, number, number, number];
-          }
           
           // 브러시된 앨범: 매우 밝게 (아티스트 검색 시)
           if (isBrushed) {
@@ -960,7 +997,7 @@ export const MapCanvas: React.FC = () => {
         }
       },
       updateTriggers: {
-        getFillColor: [selectedAlbumId, brushedAlbumIds, viewportYearRange, searchMatchedAlbumIds, searchQuery, selectedGenre],
+        getFillColor: [selectedAlbumId, brushedAlbumIds, viewportYearRange, searchMatchedAlbumIds, searchQuery],
         getLineWidth: [selectedAlbumId, clickedAlbum],
         getRadius: [selectedAlbumId, clickedAlbum],
         getPosition: [scales]
@@ -982,10 +1019,25 @@ export const MapCanvas: React.FC = () => {
             pan: { threshold: 10 },  // 10픽셀 이상 움직여야 드래그로 인식
             tap: { threshold: 10 },  // 클릭 허용 범위
           }}
-          onViewStateChange={({ viewState: newViewState }: any) => {
-            // 드래그/줌 시 DetailPanel 자동 닫기
-            if (selectedAlbumId) {
-              selectAlbum(null);
+          onViewStateChange={({ viewState: newViewState, interactionState }: any) => {
+            // ??? ?/??? ?, ?? ?? ???? ?? ?? ??
+            const isUserMove = !!(interactionState?.isDragging || interactionState?.isPanning || interactionState?.isZooming);
+            if (isUserMove && panelCloseRef.current.active) {
+              const base = panelCloseRef.current;
+              const zoomDelta = Math.abs(newViewState.zoom - base.baseZoom);
+              const dx = Math.abs(newViewState.target[0] - base.baseTarget[0]);
+              const dy = Math.abs(newViewState.target[1] - base.baseTarget[1]);
+              const panDist = Math.sqrt(dx * dx + dy * dy);
+
+              const zoomThreshold = 0.8;
+              const panThreshold = 150;
+
+              if ((selectedAlbumId || clickedAlbum || selectedArtist) && (zoomDelta > zoomThreshold || panDist > panThreshold)) {
+                if (selectedAlbumId) selectAlbum(null);
+                if (clickedAlbum) setClickedAlbum(null);
+                if (selectedArtist) selectArtist(null);
+                panelCloseRef.current.active = false;
+              }
             }
             
             // 그리드 표시 (줌/팬 중)
@@ -1072,7 +1124,12 @@ export const MapCanvas: React.FC = () => {
             if (info.object) {
               const album = info.object as Album;
               console.log('?? Clicked album:', album.title);
-              setClickedAlbum({ x: info.x, y: info.y, album });
+              if (selectedAlbumId) {
+                setClickedAlbum(null);
+                selectAlbum(album.id);
+              } else {
+                setClickedAlbum({ x: info.x, y: info.y, album });
+              }
             } else {
               setClickedAlbum(null);
               if (selectedGenre) {
@@ -1093,31 +1150,44 @@ export const MapCanvas: React.FC = () => {
           )}
           
           {/* Clicked Album Popup (반응형, 크기 키움) */}
-          {clickedAlbum && (
+          {popupAlbum && (
             <div 
               ref={popupRef}
-              className="absolute z-50 w-[320px] sm:w-[360px] md:w-[400px] lg:w-[440px] bg-white backdrop-blur-3xl border border-gray-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300"
+              className={"absolute z-50 w-[320px] sm:w-[360px] md:w-[400px] lg:w-[440px] bg-white backdrop-blur-3xl border border-gray-200 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 " + (popupVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none') }
               style={{ 
-                left: Math.min(clickedAlbum.x + 20, window.innerWidth - 340), 
-                top: Math.min(clickedAlbum.y, window.innerHeight - 280) 
+                left: Math.min(popupAlbum.x + 20, window.innerWidth - 340), 
+                top: Math.min(popupAlbum.y, window.innerHeight - 280) 
               }}
             >
               <div className="p-4 sm:p-5 md:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 md:gap-5 mb-4">
                   <img 
-                    src={clickedAlbum.album.coverUrl} 
+                    src={popupAlbum.album.coverUrl} 
                     className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-lg border border-white/20 shadow-lg" 
-                    alt={clickedAlbum.album.title} 
+                    alt={popupAlbum.album.title} 
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm sm:text-base md:text-lg font-bold text-black mb-1 truncate">{clickedAlbum.album.title}</h3>
-                    <p className="text-xs sm:text-sm md:text-base text-gray-600 truncate">{clickedAlbum.album.artist}</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-bold text-black mb-1 truncate">{popupAlbum.album.title}</h3>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectAlbum(null);
+                        selectArtist(popupAlbum.album.artist);
+                      }}
+                      className="group relative text-xs sm:text-sm md:text-base text-gray-800 font-medium truncate"
+                      title="View artist"
+                    >
+                      <span className="inline-flex items-center gap-2 border-b border-transparent group-hover:border-black transition-colors">
+                        {popupAlbum.album.artist}
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 group-hover:text-gray-700">Artist</span>
+                      </span>
+                    </button>
                     <div className="flex items-center gap-2 mt-2 text-[10px] sm:text-xs md:text-sm text-gray-500">
-                      <span>{clickedAlbum.album.year}</span>
+                      <span>{popupAlbum.album.year}</span>
                       <span>•</span>
-                      <span>{clickedAlbum.album.country}</span>
+                      <span>{popupAlbum.album.country}</span>
                       <span>•</span>
-                      <span>{clickedAlbum.album.genres.slice(0, 2).join(', ')}</span>
+                      <span>{popupAlbum.album.genres.slice(0, 2).join(', ')}</span>
                     </div>
                   </div>
                 </div>
@@ -1125,7 +1195,7 @@ export const MapCanvas: React.FC = () => {
                   <button
                     onClick={() => {
                       // View Detail 클릭: selectAlbum 호출하고 팝업 닫기
-                      selectAlbum(clickedAlbum.album.id);
+                      selectAlbum(popupAlbum.album.id);
                       setClickedAlbum(null);
                     }}
                     className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-black hover:bg-gray-800 text-white text-xs sm:text-sm md:text-base font-bold rounded-lg transition-all flex items-center justify-center gap-2"

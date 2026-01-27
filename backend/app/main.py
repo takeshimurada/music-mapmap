@@ -16,6 +16,9 @@ from .models import (
     TrackCredit,
     Role,
     Creator,
+    CreatorSpotifyProfile,
+    CreatorRelation,
+    CreatorLink,
     CulturalAsset,
     AssetLink,
     AlbumLink,
@@ -28,7 +31,7 @@ from .schemas import (
     DevUserCreateResponse, LikeRequest, LikeResponse, LikeItem, LikesListResponse,
     EventRequest, EventResponse, AlbumGroupDetailResponse, ReleaseResponse, TrackResponse,
     AlbumCreditResponse, TrackCreditResponse, CreatorResponse, RoleResponse,
-    AssetResponse, AlbumLinkResponse
+    AssetResponse, AlbumLinkResponse, ArtistProfileResponse, ArtistLinkResponse, ArtistAlbumResponse, ArtistRelationResponse
 )
 from .service_gemini import get_ai_research
 
@@ -444,6 +447,117 @@ async def get_album_group_detail(album_id: str, db: AsyncSession = Depends(get_d
         album_links=album_links
     )
     return APIResponse(data=detail)
+
+@app.get("/artists/lookup", response_model=APIResponse)
+async def get_artist_profile(name: str, db: AsyncSession = Depends(get_db)):
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    normalized = name.strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    # Prefer exact case-insensitive match
+    stmt = (
+        select(Creator, CreatorSpotifyProfile)
+        .join(CreatorSpotifyProfile, Creator.creator_id == CreatorSpotifyProfile.creator_id, isouter=True)
+        .where(func.lower(Creator.display_name) == normalized.lower())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    row = result.first()
+
+    creator = None
+    profile = None
+    if row:
+        creator, profile = row
+    else:
+        # Fallback: partial match
+        stmt = (
+            select(Creator, CreatorSpotifyProfile)
+            .join(CreatorSpotifyProfile, Creator.creator_id == CreatorSpotifyProfile.creator_id, isouter=True)
+            .where(Creator.display_name.ilike(f"%{normalized}%"))
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        row = result.first()
+        if row:
+            creator, profile = row
+
+    display_name = creator.display_name if creator else normalized
+    creator_id = creator.creator_id if creator else None
+    bio = creator.bio if creator else None
+    image_url = creator.image_url if creator else None
+    genres = profile.genres if profile and profile.genres else []
+    spotify_url = profile.spotify_url if profile else None
+
+    links: list[ArtistLinkResponse] = []
+    if creator_id:
+        links_res = await db.execute(select(CreatorLink).where(CreatorLink.creator_id == creator_id))
+        links = [
+            ArtistLinkResponse(
+                provider=l.provider,
+                url=l.url,
+                external_id=l.external_id,
+                is_primary=l.is_primary
+            )
+            for l in links_res.scalars().all()
+        ]
+
+    discography_res = await db.execute(
+        select(AlbumGroup)
+        .where(AlbumGroup.primary_artist_display.ilike(display_name))
+        .order_by(AlbumGroup.original_year.desc().nulls_last())
+        .limit(200)
+    )
+    discography = [
+        ArtistAlbumResponse(
+            id=a.album_group_id,
+            title=a.title,
+            year=a.original_year,
+            cover_url=a.cover_url
+        )
+        for a in discography_res.scalars().all()
+    ]
+
+    relations: list[ArtistRelationResponse] = []
+    if creator_id:
+        rels_res = await db.execute(
+            select(CreatorRelation, Creator)
+            .join(Creator, Creator.creator_id == CreatorRelation.target_creator_id)
+            .where(CreatorRelation.source_creator_id == creator_id)
+        )
+        for rel, other in rels_res.all():
+            relations.append(ArtistRelationResponse(
+                relation_type=rel.relation_type,
+                creator_id=other.creator_id,
+                display_name=other.display_name
+            ))
+
+        rels_rev_res = await db.execute(
+            select(CreatorRelation, Creator)
+            .join(Creator, Creator.creator_id == CreatorRelation.source_creator_id)
+            .where(CreatorRelation.target_creator_id == creator_id)
+        )
+        for rel, other in rels_rev_res.all():
+            relations.append(ArtistRelationResponse(
+                relation_type=rel.relation_type,
+                creator_id=other.creator_id,
+                display_name=other.display_name
+            ))
+
+    artist_profile = ArtistProfileResponse(
+        creator_id=creator_id,
+        display_name=display_name,
+        bio=bio,
+        image_url=image_url,
+        genres=genres,
+        spotify_url=spotify_url,
+        links=links,
+        discography=discography,
+        relations=relations
+    )
+    return APIResponse(data=artist_profile)
 
 @app.post("/research", response_model=APIResponse)
 async def create_research(req: ResearchRequest, db: AsyncSession = Depends(get_db)):

@@ -46,11 +46,10 @@ function Backup-RenderDb($rootDir) {
   $pgUrl = $env:RENDER_DATABASE_URL -replace "^postgresql\+asyncpg://", "postgresql://"
   Write-Host "Backing up Render DB..."
 
-  $dumpCmd = @("run", "-i", "--rm", "postgres:18", "pg_dump", "--no-owner", "--no-privileges", $pgUrl)
-  $proc = Start-Process -FilePath "docker" -ArgumentList $dumpCmd -NoNewWindow -RedirectStandardOutput $tmpFile -PassThru
-  $proc.WaitForExit()
-  if ($proc.ExitCode -ne 0) {
-    throw "Render backup failed with exit code $($proc.ExitCode)"
+  $cmd = "docker run -i --rm postgres:18 pg_dump --no-owner --no-privileges $pgUrl > `"$tmpFile`""
+  cmd /c $cmd
+  if ($LASTEXITCODE -ne 0) {
+    throw "Render backup failed with exit code $LASTEXITCODE"
   }
 
   $inStream = [System.IO.File]::OpenRead($tmpFile)

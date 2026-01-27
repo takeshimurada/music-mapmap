@@ -12,6 +12,7 @@ const SPOTIFY_MIN_INTERVAL_MS = Number(process.env.SPOTIFY_MIN_INTERVAL_MS || "2
 const SPOTIFY_MAX_RETRIES = Number(process.env.SPOTIFY_MAX_RETRIES || "6");
 const SPOTIFY_ARTIST_BATCH_SIZE = Number(process.env.SPOTIFY_ARTIST_BATCH_SIZE || "50");
 const SPOTIFY_BATCH_DELAY_MS = Number(process.env.SPOTIFY_BATCH_DELAY_MS || "200");
+const SPOTIFY_SEED_OFFSET_MAX = Number(process.env.SPOTIFY_SEED_OFFSET_MAX || "50");
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env");
@@ -20,6 +21,7 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const OUT_DIR = path.resolve("./out");
 const OUT_FILE = path.join(OUT_DIR, "albums_spotify_v0.json");
+const SEED_FILE = path.resolve("./scripts/fetch/award_seeds.json");
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function sleep(ms) {
@@ -202,11 +204,23 @@ function buildQueries() {
   
   
   // 2011~2020년
-  for (let y = 2011; y <= 2020; y++) {
+  for (let y = 2023; y <= 2026; y++) {
     queries.push(`year:${y}`);
   }
 
   return queries;
+}
+
+function loadSeeds() {
+  if (!fs.existsSync(SEED_FILE)) return [];
+  try {
+    const raw = JSON.parse(fs.readFileSync(SEED_FILE, "utf-8"));
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.seeds)) return raw.seeds;
+  } catch (e) {
+    console.warn("Warning: failed to parse award_seeds.json; skipping seeds");
+  }
+  return [];
 }
 
 async function main() {
@@ -237,13 +251,107 @@ async function main() {
   }
 
   const queries = buildQueries();
+  const seeds = loadSeeds();
+  const seedStart = Number(process.env.SPOTIFY_SEED_START || "0");
+  const seedLimit = Number(process.env.SPOTIFY_SEED_LIMIT || "0");
+  const seedSlice = seedLimit > 0 ? seeds.slice(seedStart, seedStart + seedLimit) : seeds.slice(seedStart);
+  const seedCount = seedSlice.length;
 
   console.log(`📊 수집 설정`);
   console.log(`   Market: ${MARKET || 'Global'}`);
   console.log(`   Target: ${TARGET_ALBUMS}개`);
   console.log(`   Queries: ${queries.length}개`);
+  console.log(`   Seeds: ${seedCount}${seedStart || seedLimit ? ` (start=${seedStart}, limit=${seedLimit || "all"})` : ""}`);
   console.log(`   기존 앨범: ${out.length}개`);
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+  if (seedSlice.length > 0) {
+    console.log(`
+Seed pass (award_seeds.json)`);
+    for (let si = 0; si < seedSlice.length; si++) {
+      const seed = seedSlice[si];
+      const q = seed?.query;
+      if (!q || typeof q !== "string") continue;
+      console.log(`
+[Seed ${si + 1}/${seedSlice.length}] "${q}"`);
+
+      for (let offset = 0; offset <= SPOTIFY_SEED_OFFSET_MAX; offset += 50) {
+        if (out.length >= TARGET_ALBUMS) {
+          console.log(`  Target reached (${out.length})`);
+          break;
+        }
+
+        console.log(`  offset=${offset} searching...`);
+        let json;
+        try {
+          json = await searchAlbums(token, q, offset);
+        } catch (e) {
+          console.warn(`  Seed search failed: ${e.message}`);
+          continue;
+        }
+
+        const items = json?.albums?.items || [];
+        const newArtistIds = [];
+        for (const album of items) {
+          const artistId = album.artists?.[0]?.id;
+          if (artistId && !artistCache.has(artistId)) {
+            newArtistIds.push(artistId);
+          }
+        }
+        if (newArtistIds.length > 0) {
+          const uniqueArtistIds = Array.from(new Set(newArtistIds));
+          const artists = await getArtistsBatch(token, uniqueArtistIds);
+          for (const artist of artists) {
+            if (artist?.id) {
+              artistCache.set(artist.id, artist);
+            }
+          }
+        }
+
+        if (items.length === 0) {
+          console.log(`  No results for seed; moving on`);
+          break;
+        }
+
+        let addedCount = 0;
+        for (const album of items) {
+          if (out.length >= TARGET_ALBUMS) break;
+          if (!album?.id) continue;
+          if (seenAlbumIds.has(album.id)) continue;
+
+          const artistId = album.artists?.[0]?.id;
+          const artistName = album.artists?.[0]?.name;
+          if (!artistId) continue;
+          if (artistName && artistName.toLowerCase().includes('various artists')) {
+            continue;
+          }
+
+          let artist;
+          if (artistCache.has(artistId)) {
+            artist = artistCache.get(artistId);
+            apiCallsSaved++;
+          } else {
+            try {
+              artist = await getArtist(token, artistId);
+              artistCache.set(artistId, artist);
+            } catch (e) {
+              continue;
+            }
+          }
+
+          if (!artist) continue;
+          const norm = normalizeAlbum(album, artist);
+          out.push(norm);
+          seenAlbumIds.add(album.id);
+          addedCount++;
+        }
+
+        console.log(`  +${addedCount} added | total ${out.length} | cache saved ${apiCallsSaved}`);
+        await sleep(300);
+      }
+
+      if (out.length >= TARGET_ALBUMS) break;
+    }
+  }
 
   for (let qi = 0; qi < queries.length; qi++) {
     const q = queries[qi];

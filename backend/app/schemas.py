@@ -123,6 +123,38 @@ class AlbumGroupDetailResponse(BaseModel):
     album_links: List[AlbumLinkResponse]
 
 # ========================================
+# Artist Profile Schemas
+# ========================================
+
+class ArtistLinkResponse(BaseModel):
+    provider: str
+    url: str
+    external_id: Optional[str] = None
+    is_primary: bool
+
+class ArtistAlbumResponse(BaseModel):
+    id: str
+    title: str
+    year: Optional[int] = None
+    cover_url: Optional[str] = None
+
+class ArtistRelationResponse(BaseModel):
+    relation_type: str
+    creator_id: str
+    display_name: str
+
+class ArtistProfileResponse(BaseModel):
+    creator_id: Optional[str] = None
+    display_name: str
+    bio: Optional[str] = None
+    image_url: Optional[str] = None
+    genres: List[str] = []
+    spotify_url: Optional[str] = None
+    links: List[ArtistLinkResponse] = []
+    discography: List[ArtistAlbumResponse] = []
+    relations: List[ArtistRelationResponse] = []
+
+# ========================================
 # Step 1: 개발용 유저 Like & 이벤트 로그 스키마
 # ========================================
 
