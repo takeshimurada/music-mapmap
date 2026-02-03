@@ -13,6 +13,7 @@ import path from "path";
 
 const INPUT_FILE = path.resolve("./out/albums_spotify_v0.json");
 const OUTPUT_FILE = path.resolve("./out/albums_spotify_v1.json");
+const PREVIOUS_COUNTRY_FILE = path.resolve("./out/albums_spotify_v3.json");
 
 // ============================================
 // 1. genreFamily 매핑 (규칙 기반)
@@ -196,14 +197,42 @@ const MARKET_TO_COUNTRY = {
 };
 
 function standardizeCountry(market) {
-  // Spotify v0에는 앨범별 country 정보가 없음
-  // market만 있으므로 추정 금지 (요구사항)
   return {
-    country: null,  // MapCanvas 호환 (null 허용)
+    country: null,
     countryName: null,
     countryCode: null,
-    countrySource: "unknown"
+    countrySource: "unknown",
+    countryType: null,
   };
+}
+
+function loadPreviousCountryData() {
+  if (!fs.existsSync(PREVIOUS_COUNTRY_FILE)) {
+    return {};
+  }
+
+  try {
+    const cached = JSON.parse(fs.readFileSync(PREVIOUS_COUNTRY_FILE, "utf-8"));
+    if (!Array.isArray(cached.albums)) {
+      return {};
+    }
+
+    const map = {};
+    for (const album of cached.albums) {
+      if (!album?.albumId) continue;
+      map[album.albumId] = {
+        country: album.country ?? null,
+        countryName: album.countryName ?? null,
+        countryCode: album.countryCode ?? null,
+        countrySource: album.countrySource ?? null,
+        countryType: album.countryType ?? null,
+      };
+    }
+    return map;
+  } catch (error) {
+    console.warn("Failed to read cached country data; regenerating country info from scratch.");
+    return {};
+  }
 }
 
 // ============================================
@@ -225,6 +254,10 @@ async function normalize() {
   const market = rawData.market || null;
   console.log(`🌍 Market: ${market || "unknown"}`);
   console.log(`📊 Input albums: ${rawData.albums.length}\n`);
+  const previousCountryData = loadPreviousCountryData();
+  if (Object.keys(previousCountryData).length > 0) {
+    console.log(`Cached country records available: ${Object.keys(previousCountryData).length}`);
+  }
   
   // 각 앨범 정규화
   const normalized = rawData.albums.map((album, idx) => {
@@ -235,7 +268,8 @@ async function normalize() {
     const { region, source: regionSource } = deriveRegion(market, album.primaryGenre, album.artistGenres);
     
     // country 표준화
-    const countryFields = standardizeCountry(market);
+    const cachedCountry = previousCountryData[album.albumId];
+    const countryFields = cachedCountry ?? standardizeCountry(market);
     
     // 정규화된 앨범 반환
     return {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-01-28T06:17:24.871Z",
+  "generatedAt": "2026-01-29T02:45:38.792Z",
   "notes": "Sources used to build award_seeds.json (1950+ winners/nominees where available).",
   "sources": [
     "https://en.wikipedia.org/wiki/Category%3AGrammy_Award_for_Best_Album",
@@ -29,679 +29,6 @@
     "https://en.wikipedia.org/wiki/MTV_Video_Music_Award_Japan_for_Album_of_the_Year"
   ],
   "seeds": [
-    {
-      "type": "album",
-      "query": "album:\"DeB? TiRAR M?S FOToS\" artist:\"Bad Bunny\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Cosa Nuestra\" artist:\"Rauw Alejandro\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"al romper la burbuja\" artist:\"Joaquina\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"En las Nubes ? Con Mis Panas\" artist:\"Elena Rose\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Palabra de To's ? Seca\" artist:\"Car?n Le?n\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Cancionera\" artist:\"Natalia Lafourcade\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"CAJU\" artist:\"Liniker\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"?Y Ahora Qu??\" artist:\"Alejandro Sanz\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"PAPOTA\" artist:\"CA7RIEL & Paco Amoroso\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Ra?ces\" artist:\"Gloria Estefan\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Pu?ito De Yocah?\" artist:\"Vicente Garc?a\"",
-      "source": "https://www.grammy.com/news/2025-latin-grammys-nominations-winners-nominees-full-list",
-      "year": 2025,
-      "region": "Latin"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Hail to the Music\" artist:\"Danpyunsun and the Moments Ensemble\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Armageddon\" artist:\"aespa\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"PSST!\" artist:\"John Park\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Fire & Light\" artist:\"Soumbalgwang\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"MINISERIES 2\" artist:\"SUMIN\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"MINISERIES 2\" artist:\"Slom\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Free Hukky Shibaseki & the God Sun Symphony Group : Odyssey.1\" artist:\"B-Free\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Free Hukky Shibaseki & the God Sun Symphony Group : Odyssey.1\" artist:\"Hukky Shibaseki\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"GALAPAGGOT\" artist:\"NET GALA\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Kaleidoscope\" artist:\"Moher\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"2\" artist:\"Seaweed Mustache\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Infinite Connections\" artist:\"Jihye Lee Orchestra\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Old Songs, Tmmm\" artist:\"Nam Yeji\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Shape of the Land\" artist:\"BANDO\"",
-      "source": "https://www.soompi.com/article/1722434wpp/2025-korean-music-awards-announces-winners",
-      "year": 2025,
-      "region": "Korea"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Mrs. GREEN APPLE\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Taylor Swift\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"SEVENTEEN\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"??\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"A?! group\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"IS:SUE\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"NEXZ\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"?????????\"",
-      "source": "https://www.golddisc.jp/award/39/",
-      "year": 2025,
-      "region": "Japan"
-    },
-    {
-      "type": "album",
-      "query": "album:\"The Clod\" artist:\"No Party For Cao Dong\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Flow\" artist:\"Faith Yang\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"OPEN IT\" artist:\"Xu Jun\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Posture\" artist:\"Fool and Idiot\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"In The Clouds\" artist:\"Accusefive\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Jude Chiu\" artist:\"Jude Chiu\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"k?n-tan tsi?t k? u?\" artist:\"T?nn P?ng\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"H?i-h?i J?n-sing\" artist:\"Aoi\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Human Condition\" artist:\"Fire EX.\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"I?-P?\" artist:\"Panai\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Carry On\" artist:\"Meilinbear\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Jinsei Daigaku\" artist:\"Henry Hsu\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"A Dragonfly Reads a Poem\" artist:\"Rita Lin\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Migration\" artist:\"Leaf Yeh\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Shape of Life\" artist:\"Shu-Chan Chiu\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Zhin' Moi\" artist:\"Zoomie\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Hakka Glory\" artist:\"Boiii P\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"PAMERICAH\" artist:\"AZ Lixiaozu?Mayaw Alang\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"A Letter To Happiness\" artist:\"Li-Ting Chiu\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"A Letter To Happiness\" artist:\"Sapa Truku Children's Choir\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Vusam\" artist:\"Utjung Tjakivalid\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Those Days\" artist:\"O-Kai Singers\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Treasure\" artist:\"Makav\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Women's Island\" artist:\"Ado' Kaliting Pacidal\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"World\" artist:\"Elephant Gym\"",
-      "source": "https://en.wikipedia.org/wiki/35th_Golden_Melody_Awards",
-      "year": 2024,
-      "region": "Taiwan",
-      "note": "From GMA 35th nominees list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"O Tempo N?o Para\" artist:\"Cazuza\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Das 9 ?s 6\" artist:\"Marisa Monte\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Meus Momentos\" artist:\"Vanessa da Mata\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Para?so\" artist:\"Skank\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"O Amor ? Cego\" artist:\"Carlinhos Brown\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"S?bado\" artist:\"Vin?cius Cantu?ria\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Noites do Norte\" artist:\"Caetano Veloso\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Volta\" artist:\"Adriana Calcanhotto\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"V\" artist:\"Marisa Monte\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Chico\" artist:\"Chico Buarque\"",
-      "source": "https://en.wikipedia.org/wiki/Pr%C3%AAmio_Multishow_de_M%C3%BAsica_Brasileira",
-      "region": "Brazil",
-      "note": "Selected historical winners"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Her Mind\" artist:\"Urias\"",
-      "source": "https://billboard.com.br/31o-premio-da-musica-brasileira-confira-os-vencedores/",
-      "region": "Brazil",
-      "note": "31st PMB winners (selected)"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Afim\" artist:\"Luedji Luna\"",
-      "source": "https://billboard.com.br/31o-premio-da-musica-brasileira-confira-os-vencedores/",
-      "region": "Brazil",
-      "note": "31st PMB winners (selected)"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Tardezinha 3\" artist:\"Thiaguinho\"",
-      "source": "https://billboard.com.br/31o-premio-da-musica-brasileira-confira-os-vencedores/",
-      "region": "Brazil",
-      "note": "31st PMB winners (selected)"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Seyi Vibez\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Odumodublvck\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Asake\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Burna Boy\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Teezee\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Sarz\"",
-      "source": "https://theheadies.com/the-17th-headies-award-winners/",
-      "year": 2025,
-      "region": "Africa",
-      "note": "Headies 17th winners"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Wizkid\"",
-      "source": "https://apnews.com/article/afrima-awards-wizkid-burna-boy-asake-iba-one-didi-b-23814514d286b5b9388d3f4778ff5649",
-      "year": 2023,
-      "region": "Africa",
-      "note": "AFRIMA 2023 winners (AP)"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Didi B\"",
-      "source": "https://apnews.com/article/afrima-awards-wizkid-burna-boy-asake-iba-one-didi-b-23814514d286b5b9388d3f4778ff5649",
-      "year": 2023,
-      "region": "Africa",
-      "note": "AFRIMA 2023 winners (AP)"
-    },
-    {
-      "type": "artist",
-      "query": "artist:\"Iba One\"",
-      "source": "https://apnews.com/article/afrima-awards-wizkid-burna-boy-asake-iba-one-didi-b-23814514d286b5b9388d3f4778ff5649",
-      "year": 2023,
-      "region": "Africa",
-      "note": "AFRIMA 2023 winners (AP)"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Mawja\" artist:\"Aziza Brahim\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Dir?\" artist:\"Idrissa Soumaoro\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Sahel\" artist:\"Bombino\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Swaken\" artist:\"Bab L' Bluz\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Hiddo Dhawr\" artist:\"Sahra Halgan\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Tusona\" artist:\"Mokoomba\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Djudjon\" artist:\"Bassekou Kouyate & Amy Sacko\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Amatssou\" artist:\"Tinariwen\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Musow Dance\" artist:\"Les Amazones d'Afrique\"",
-      "source": "https://www.musicinafrica.net/magazine/aziza-brahims-mawja-named-best-album-transglobal-world-music-chart",
-      "region": "Africa",
-      "note": "TWMC top albums list"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Tyla\" artist:\"Tyla\"",
-      "source": "https://www.musicinafrica.net/magazine/african-artists-shine-rolling-stones-2024-best-albums-list",
-      "year": 2024,
-      "region": "Africa",
-      "note": "Rolling Stone 2024 list (Africa-related)"
-    },
-    {
-      "type": "album",
-      "query": "album:\"Born in the Wild\" artist:\"Tems\"",
-      "source": "https://www.musicinafrica.net/magazine/african-artists-shine-rolling-stones-2024-best-albums-list",
-      "year": 2024,
-      "region": "Africa",
-      "note": "Rolling Stone 2024 list (Africa-related)"
-    },
     {
       "type": "album",
       "query": "album:\"Various Artists\" artist:\"Bob Merrill & Jule Styne, composers\"",
@@ -5400,6 +4727,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Chico\" artist:\"Chico Buarque\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Album_of_the_Year",
+      "award": "Latin Grammy",
+      "region": "Latin",
+      "year": 2012
+    },
+    {
+      "type": "album",
       "query": "album:\"Eso Es Lo Que Hay\" artist:\"ChocQuibTown\"",
       "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Album_of_the_Year",
       "award": "Latin Grammy",
@@ -6517,6 +5852,14 @@
       "award": "Latin Grammy",
       "region": "Brazil",
       "year": 2000
+    },
+    {
+      "type": "album",
+      "query": "album:\"Noites Do Norte\" artist:\"Caetano Veloso\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_MPB_Album",
+      "award": "Latin Grammy",
+      "region": "Brazil",
+      "year": 2001
     },
     {
       "type": "album",
@@ -8589,6 +7932,14 @@
       "award": "Latin Grammy",
       "region": "Brazil",
       "year": 2024
+    },
+    {
+      "type": "album",
+      "query": "album:\"Caju\" artist:\"Liniker\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Portuguese_Language_Contemporary_Pop_Album",
+      "award": "Latin Grammy",
+      "region": "Brazil",
+      "year": 2025
     },
     {
       "type": "album",
@@ -11600,6 +10951,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Papota\" artist:\"Ca7riel & Paco Amoroso\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Alternative_Music_Album",
+      "award": "Latin Grammy",
+      "region": "Latin",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Para Quién Trabajas Vol. I\" artist:\"Marilina Bertoldi\"",
       "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Alternative_Music_Album",
       "award": "Latin Grammy",
@@ -12984,6 +12343,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Al Romper la Burbuja\" artist:\"Joaquina\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Contemporary_Pop_Album",
+      "award": "Latin Grammy",
+      "region": "Latin",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"En las Nubes - Con Mis Panas\" artist:\"Elena Rose\"",
       "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Contemporary_Pop_Album",
       "award": "Latin Grammy",
@@ -13773,6 +13140,14 @@
       "award": "Latin Grammy",
       "region": "Latin",
       "year": 2024
+    },
+    {
+      "type": "album",
+      "query": "album:\"Cancionera\" artist:\"Natalia Lafourcade\"",
+      "source": "https://en.wikipedia.org/wiki/Latin_Grammy_Award_for_Best_Singer-Songwriter_Album",
+      "award": "Latin Grammy",
+      "region": "Latin",
+      "year": 2025
     },
     {
       "type": "album",
@@ -14952,6 +14327,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Hail to the Music\" artist:\"Danpyunsun and the Moments Ensemble\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Nowitzki\" artist:\"Beenzino\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -15112,6 +14495,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"PSST!\" artist:\"John Park\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Hearts of the City\" artist:\"Lee Jin-ah\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -15240,6 +14631,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Armageddon\" artist:\"Aespa\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Get Up\" artist:\"NewJeans\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -15253,6 +14652,14 @@
       "award": "Korean Music Awards",
       "region": "Korea",
       "year": 2022
+    },
+    {
+      "type": "album",
+      "query": "album:\"Fire & Light\" artist:\"Soumbalgwang\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
     },
     {
       "type": "album",
@@ -15528,6 +14935,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"2\" artist:\"Seaweed Mustache\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Reason For Silence\" artist:\"Mahatma\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -15600,6 +15015,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Kaleidoscope\" artist:\"Moher\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Comedy\" artist:\"Yeoyu and Seolbin\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -15661,6 +15084,14 @@
       "award": "Korean Music Awards",
       "region": "Korea",
       "year": 2015
+    },
+    {
+      "type": "album",
+      "query": "album:\"Galapaggot\" artist:\"Net Gala\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
     },
     {
       "type": "album",
@@ -16128,6 +15559,14 @@
     },
     {
       "type": "album",
+      "query": "album:\"Infinite Connections\" artist:\"Jihye Lee Orchestra\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
+    },
+    {
+      "type": "album",
       "query": "album:\"Four Seasons\" artist:\"Soojung Lee\"",
       "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
       "award": "Korean Music Awards",
@@ -16165,6 +15604,14 @@
       "award": "Korean Music Awards",
       "region": "Korea",
       "year": 2022
+    },
+    {
+      "type": "album",
+      "query": "album:\"Shape of the Land\" artist:\"Bando\"",
+      "source": "https://en.wikipedia.org/wiki/Korean_Music_Awards",
+      "award": "Korean Music Awards",
+      "region": "Korea",
+      "year": 2025
     },
     {
       "type": "album",

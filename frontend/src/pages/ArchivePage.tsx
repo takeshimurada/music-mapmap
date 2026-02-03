@@ -92,7 +92,7 @@ const AlbumCard: React.FC<{ album: Album; onClick: () => void }> = React.memo(({
 });
 
 export const ArchivePage: React.FC = () => {
-  const { albums, selectAlbum } = useStore();
+  const { albums, selectAlbum, searchQuery } = useStore();
   
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [yearRange, setYearRange] = useState<[number, number]>([YEAR_MIN, YEAR_MAX]);
@@ -201,13 +201,22 @@ export const ArchivePage: React.FC = () => {
     if (yearRange[0] !== YEAR_MIN || yearRange[1] !== YEAR_MAX) {
       filtered = filtered.filter(album => album.year >= yearRange[0] && album.year <= yearRange[1]);
     }
-
-    // 국가 필터
+    // country filter
     if (selectedCountry !== 'All') {
       filtered = filtered.filter(album => album.country === selectedCountry);
     }
 
-    // 정렬
+    // search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(album =>
+        album.title.toLowerCase().includes(q) ||
+        album.artist.toLowerCase().includes(q)
+      );
+    }
+
+
+    // sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'popularity':
@@ -233,7 +242,7 @@ export const ArchivePage: React.FC = () => {
     setDisplayCount(50);
 
     return filtered;
-  }, [albums, selectedGenre, yearRange, selectedCountry, sortBy]);
+  }, [albums, selectedGenre, yearRange, selectedCountry, sortBy, searchQuery]);
 
   // 실제 표시할 앨범 (성능 최적화)
   const displayedAlbums = useMemo(() => {

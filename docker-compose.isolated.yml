@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: sonic_backend_isolated
+    ports:
+      - "8001:8000"
+
+  db:
+    container_name: sonic_db_isolated
+    ports:
+      - "5433:5432"
+
+  redis:
+    container_name: sonic_redis_isolated
+    ports:
+      - "6380:6379"
+
+volumes:
+  postgres_data:
+    name: music-mapmap_postgres_data_isolated

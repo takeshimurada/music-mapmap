@@ -25,7 +25,7 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const OUT_DIR = path.resolve("./out");
 const OUT_FILE = path.join(OUT_DIR, "albums_spotify_v0.json");
-const SEED_FILE = path.resolve("./scripts/fetch/award_seeds.json");
+const SEED_FILE = path.resolve("./scripts/fetch/award_seeds_alltime.json");
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 function sleep(ms) {
@@ -329,6 +329,12 @@ Seed pass (award_seeds.json)`);
       const absoluteSeedIndex = seedStart + si;
       const q = seed?.query;
       if (!q || typeof q !== "string") continue;
+      if (q.length > 250) {
+        console.warn(`  Seed query too long (${q.length}); skipping.`);
+        savedSeedIndex = absoluteSeedIndex + 1;
+        saveProgress(savedSeedIndex);
+        continue;
+      }
       console.log(`
 [Seed ${si + 1}/${seedSlice.length}] "${q}"`);
 

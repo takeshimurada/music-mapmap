@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, ArrowUpRight, Music, Trash2 } from 'lucide-react';
 import { useStore, BACKEND_URL, getAuthHeaders } from '../../state/store';
 import { Album } from '../../types';
+import { useLocation } from 'react-router-dom';
 
 type SearchBarVariant = 'default' | 'embedded';
 
 export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boolean }> = ({ variant = 'default', autoFocus = false }) => {
   const { searchQuery, setSearchQuery, selectAlbum, selectArtist, albums, setViewport, setBrushedAlbums } = useStore();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Album[]>([]);
   const [artistSuggestions, setArtistSuggestions] = useState<string[]>([]);
@@ -85,15 +87,17 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setSearchQuery('');
         setSuggestions([]);
         setArtistSuggestions([]);
         setSelectedItem(null);
+        if (location.pathname !== '/archive') {
+          setSearchQuery('');
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [location.pathname, setSearchQuery]);
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -184,6 +188,13 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
     ? 'block w-full py-2.5 pl-10 pr-10 text-xs text-black bg-transparent focus:ring-0 focus:border-transparent placeholder-gray-400 outline-none'
     : 'block w-full py-2.5 pl-10 pr-10 text-xs text-black border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-black/10 focus:border-black placeholder-gray-400 shadow-sm transition-all outline-none';
 
+  const closePanelsForArchive = () => {
+    if (location.pathname === '/archive') {
+      selectAlbum(null);
+      selectArtist(null);
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative w-full group">
       {/* Search Input */}
@@ -197,9 +208,21 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
           className={inputClassName}
           placeholder="앨범/아티스트 검색..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            closePanelsForArchive();
+            setSearchQuery(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              setIsOpen(false);
+              setSelectedItem(null);
+            }
+          }}
           onMouseEnter={() => setIsOpen(true)}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            closePanelsForArchive();
+            setIsOpen(true);
+          }}
         />
         {searchQuery && (
           <button 
