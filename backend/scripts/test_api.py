@@ -1,68 +1,94 @@
-"""API 테스트 스크립트"""
+﻿"""API smoke test script."""
 import asyncio
-import sys
 import os
-import json
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select, func
 from app.database import AsyncSessionLocal
-from app.models import Album
+from app.models import AlbumGroup, MapNode
+from app.services.common import country_to_region, genre_to_vibe
 
-async def test_api():
-    """API 엔드포인트 데이터 테스트"""
+
+async def run_api_checks():
+    """Basic API data checks against the database."""
     async with AsyncSessionLocal() as session:
-        # 총 앨범 수 확인
-        result = await session.execute(select(func.count(Album.id)))
+        # Total album groups
+        result = await session.execute(select(func.count(AlbumGroup.album_group_id)))
         total = result.scalar()
-        print(f"✅ 총 앨범 수: {total}개")
-        
-        # 최근 10개 앨범 조회
-        stmt = select(Album).order_by(Album.year.desc()).limit(10)
+        print(f"Total album groups: {total}")
+
+        # Latest 10 albums by year
+        stmt = select(AlbumGroup).order_by(AlbumGroup.original_year.desc()).limit(10)
         result = await session.execute(stmt)
         albums = result.scalars().all()
-        
-        print(f"\n📀 최근 앨범 10개:")
+
+        print("\nLatest 10 albums:")
         for album in albums:
-            print(f"  - {album.year}: {album.artist_name} - {album.title} ({album.genre})")
-        
-        # 연도별 분포
-        stmt = select(Album.year, func.count(Album.id)).group_by(Album.year).order_by(Album.year)
+            print(f"  - {album.original_year}: {album.primary_artist_display} - {album.title} ({album.primary_genre})")
+
+        # Year distribution sample
+        stmt = (
+            select(AlbumGroup.original_year, func.count(AlbumGroup.album_group_id))
+            .group_by(AlbumGroup.original_year)
+            .order_by(AlbumGroup.original_year)
+        )
         result = await session.execute(stmt)
         year_dist = result.all()
-        
-        print(f"\n📊 연도별 분포 (샘플):")
+
+        print("\nYear distribution (sample):")
         for year, count in year_dist[:10]:
-            print(f"  {year}: {count}개")
-        
-        # 장르별 분포
-        stmt = select(Album.genre, func.count(Album.id)).group_by(Album.genre).order_by(func.count(Album.id).desc()).limit(10)
+            print(f"  {year}: {count}")
+
+        # Genre distribution top 10
+        stmt = (
+            select(AlbumGroup.primary_genre, func.count(AlbumGroup.album_group_id))
+            .group_by(AlbumGroup.primary_genre)
+            .order_by(func.count(AlbumGroup.album_group_id).desc())
+            .limit(10)
+        )
         result = await session.execute(stmt)
         genre_dist = result.all()
-        
-        print(f"\n🎵 인기 장르 TOP 10:")
+
+        print("\nTop 10 genres:")
         for genre, count in genre_dist:
-            print(f"  {genre}: {count}개")
-        
-        # 지역별 분포
-        stmt = select(Album.region_bucket, func.count(Album.id)).group_by(Album.region_bucket).order_by(func.count(Album.id).desc())
+            print(f"  {genre}: {count}")
+
+        # Region distribution (by country mapping)
+        stmt = select(AlbumGroup.country_code, func.count(AlbumGroup.album_group_id)).group_by(AlbumGroup.country_code)
         result = await session.execute(stmt)
-        region_dist = result.all()
-        
-        print(f"\n🌍 지역별 분포:")
-        for region, count in region_dist:
-            print(f"  {region}: {count}개")
-        
-        # 맵 포인트 시뮬레이션 (zoom=3.0)
-        stmt = select(Album).where(Album.year >= 1960, Album.year <= 2024).limit(5)
+        region_counts = {}
+        for country, count in result.all():
+            region = country_to_region(country)
+            region_counts[region] = region_counts.get(region, 0) + count
+
+        print("\nRegion distribution:")
+        for region, count in sorted(region_counts.items(), key=lambda x: x[1], reverse=True):
+            print(f"  {region}: {count}")
+
+        # Map sample (join MapNode if available)
+        stmt = (
+            select(AlbumGroup, MapNode)
+            .join(MapNode, AlbumGroup.album_group_id == MapNode.album_group_id, isouter=True)
+            .where(AlbumGroup.original_year >= 1960, AlbumGroup.original_year <= 2024)
+            .limit(5)
+        )
         result = await session.execute(stmt)
-        sample_albums = result.scalars().all()
-        
-        print(f"\n🗺️  맵 포인트 샘플 (5개):")
-        for album in sample_albums:
-            print(f"  - x:{album.year}, y:{album.genre_vibe:.2f}, r:{album.popularity*10+2:.1f}, color:{album.region_bucket}")
-            print(f"    {album.artist_name} - {album.title}")
+        samples = result.all()
+
+        print("\nMap sample (5 rows):")
+        for album, node in samples:
+            vibe = genre_to_vibe(album.primary_genre)
+            y = node.y if node else None
+            size = node.size if node else None
+            print(f"  - x:{album.original_year}, y:{y}, r:{size}, color:{country_to_region(album.country_code)}")
+            print(f"    {album.primary_artist_display} - {album.title} (vibe {vibe:.2f})")
+
+
+def test_api():
+    asyncio.run(run_api_checks())
+
 
 if __name__ == "__main__":
-    asyncio.run(test_api())
+    asyncio.run(run_api_checks())

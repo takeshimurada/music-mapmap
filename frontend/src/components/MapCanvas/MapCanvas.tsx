@@ -1,13 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { DeckGL } from '@deck.gl/react';
 import { OrthographicView, LinearInterpolator } from '@deck.gl/core';
 import { ScatterplotLayer, LineLayer, TextLayer } from '@deck.gl/layers';
 import type { PickingInfo } from '@deck.gl/core';
 import { scaleLinear } from 'd3';
 import { useStore } from '../../state/store';
-import { Album, Region } from '../../types';
+import { Album } from '../../types';
 
-// Easing 함수 (부드러운 감속)
+// Easing ?⑥닔 (遺?쒕윭??媛먯냽)
 const easeInOutCubic = (t: number) => {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 };
@@ -15,11 +15,11 @@ const easeInOutCubic = (t: number) => {
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2026;
 const DAYS_PER_YEAR = 365;
-const WORLD_WIDTH = 1200;  // 800 → 1200 (50% 확장)
-const WORLD_HEIGHT = 900;  // 600 → 900 (50% 확장)
+const WORLD_WIDTH = 1200;  // 800 ??1200 (50% ?뺤옣)
+const WORLD_HEIGHT = 900;  // 600 ??900 (50% ?뺤옣)
 
-// Y축 배치: 위에서부터 아프리카 - 라틴&남미 - 캐리비안 - 북미 - 유럽 - 아시아 - 오세아니아
-// 대륙 순서 정의
+// Y異?諛곗튂: ?꾩뿉?쒕????꾪봽由ъ뭅 - ?쇳떞&?⑤? - 罹먮━鍮꾩븞 - 遺곷? - ?좊읇 - ?꾩떆??- ?ㅼ꽭?꾨땲??
+// ?瑜??쒖꽌 ?뺤쓽
 const REGION_ORDER = [
   'Africa',
   'South America', 
@@ -30,80 +30,21 @@ const REGION_ORDER = [
   'Oceania'
 ];
 
-// 동적 Y축 범위 계산 함수 (중앙 밀집 + 노드 양에 따른 동적 할당 + 최소 영역 보장)
-const calculateDynamicRegionRanges = (albums: Album[]): Record<string, { min: number; max: number; center: number }> => {
-  // 1. 각 지역별 앨범 수 계산
-  const regionCounts: Record<string, number> = {};
-  albums.forEach(album => {
-    const region = album.region;
-    regionCounts[region] = (regionCounts[region] || 0) + 1;
-  });
-  
-  // 2. 총 앨범 수
-  const totalAlbums = albums.length;
-  
-  // 3. 중앙 밀집 범위 설정 (0~100% 범위 내에서 사용)
-  const COMPRESSED_MIN = 0.05;
-  const COMPRESSED_MAX = 0.95;
-  const usableRange = COMPRESSED_MAX - COMPRESSED_MIN;
-  
-  // 4. 최소 영역 크기 설정 (전체의 2% 이상)
-  const MIN_REGION_RATIO = 0.02;
-  
-  // 5. 앨범이 있는 지역과 조정된 비율 계산
-  const activeRegions: { region: string; count: number; ratio: number }[] = [];
-  let totalRatio = 0;
-  
-  REGION_ORDER.forEach(region => {
-    const count = regionCounts[region] || 0;
-    if (count > 0) {
-      // 비율 계산 (최소값 적용)
-      const rawRatio = count / totalAlbums;
-      const adjustedRatio = Math.max(rawRatio, MIN_REGION_RATIO);
-      activeRegions.push({ region, count, ratio: adjustedRatio });
-      totalRatio += adjustedRatio;
-    }
-  });
-  
-  // 6. 비율 정규화 (합이 1이 되도록)
-  activeRegions.forEach(r => {
-    r.ratio = r.ratio / totalRatio;
-  });
-  
-  // 7. 각 지역에 Y축 공간 할당
-  const ranges: Record<string, { min: number; max: number; center: number }> = {};
-  let currentRelativeY = 0.0;
-  
-  activeRegions.forEach(({ region, ratio }) => {
-    const actualMin = COMPRESSED_MIN + currentRelativeY * usableRange;
-    const actualMax = COMPRESSED_MIN + (currentRelativeY + ratio) * usableRange;
-    
-    ranges[region] = {
-      min: actualMin,
-      max: actualMax,
-      center: (actualMin + actualMax) / 2
-    };
-    
-    currentRelativeY += ratio;
-  });
-  
-  return ranges;
-};
 
-// 기본 Y축 범위 (데이터 로드 전)
+// 湲곕낯 Y異?踰붿쐞 (?곗씠??濡쒕뱶 ??
 let REGION_Y_RANGES: Record<string, { min: number; max: number; center: number }> = {
   'Africa': { min: 0.00, max: 0.08, center: 0.04 },
   'South America': { min: 0.08, max: 0.18, center: 0.13 },
   'Caribbean': { min: 0.18, max: 0.23, center: 0.205 },
-  'North America': { min: 0.20, max: 0.53, center: 0.365 },  // 0.55 → 0.53 (빈 공간 제거)
-  'Europe': { min: 0.53, max: 0.85, center: 0.69 },           // 0.55 → 0.53 (빈 공간 제거)
+  'North America': { min: 0.20, max: 0.53, center: 0.365 },  // 0.55 ??0.53 (鍮?怨듦컙 ?쒓굅)
+  'Europe': { min: 0.53, max: 0.85, center: 0.69 },           // 0.55 ??0.53 (鍮?怨듦컙 ?쒓굅)
   'Asia': { min: 0.85, max: 0.93, center: 0.89 },
   'Oceania': { min: 0.93, max: 1.00, center: 0.965 },
 };
 
-// 국가별 Y축 위치 (각 대륙 범위 내에서 세분화)
+// 援??蹂?Y異??꾩튂 (媛??瑜?踰붿쐞 ?댁뿉???몃텇??
 const COUNTRY_Y_POSITION: Record<string, number> = {
-  // Africa (0.00-0.08) - 최상단
+  // Africa (0.00-0.08) - 理쒖긽??
   'Morocco': 0.01,
   'Senegal': 0.025,
   'Ghana': 0.035,
@@ -113,10 +54,10 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'South Africa': 0.07,
   
   // South America (0.08-0.18)
-  'Mexico': 0.085,              // 북쪽
+  'Mexico': 0.085,              // 遺곸そ
   'Colombia': 0.095,
   'Venezuela': 0.10,
-  'Brazil': 0.12,               // 중심
+  'Brazil': 0.12,               // 以묒떖
   'Peru': 0.115,
   'Chile': 0.135,
   'Argentina': 0.14,
@@ -129,28 +70,28 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'Puerto Rico': 0.175,
   'Trinidad and Tobago': 0.19,
   
-  // North America (0.20-0.55) - 데이터 가장 많음, 넓은 공간
-  'Canada': 0.22,               // 북쪽
-  'United States': 0.375,       // 중심
+  // North America (0.20-0.55) - ?곗씠??媛??留롮쓬, ?볦? 怨듦컙
+  'Canada': 0.22,               // 遺곸そ
+  'United States': 0.375,       // 以묒떖
   'USA': 0.375,
   'US': 0.375,
   
-  // 미국 도시별 세분화 (캐리비안에 가까운 곳 위쪽)
-  'Miami': 0.23,                // 캐리비안에 가까움
-  'New Orleans': 0.26,          // 캐리비안에 가까움
+  // 誘멸뎅 ?꾩떆蹂??몃텇??(罹먮━鍮꾩븞??媛源뚯슫 怨??꾩そ)
+  'Miami': 0.23,                // 罹먮━鍮꾩븞??媛源뚯?
+  'New Orleans': 0.26,          // 罹먮━鍮꾩븞??媛源뚯?
   'Nashville': 0.30,
-  'Chicago': 0.35,              // 중부
+  'Chicago': 0.35,              // 以묐?
   'Detroit': 0.36,
-  'New York': 0.49,             // 동부, 유럽에 가까움 (0.48 → 0.49)
-  'Boston': 0.52,               // 동부, 유럽에 가까움 (0.50 → 0.52)
-  'Los Angeles': 0.40,          // 서부
-  'San Francisco': 0.43,        // 서부 (0.42 → 0.43)
-  'Seattle': 0.48,              // 서부 북부 (0.45 → 0.48)
+  'New York': 0.49,             // ?숇?, ?좊읇??媛源뚯? (0.48 ??0.49)
+  'Boston': 0.52,               // ?숇?, ?좊읇??媛源뚯? (0.50 ??0.52)
+  'Los Angeles': 0.40,          // ?쒕?
+  'San Francisco': 0.43,        // ?쒕? (0.42 ??0.43)
+  'Seattle': 0.48,              // ?쒕? 遺곷? (0.45 ??0.48)
   
-  // Europe (0.53-0.85) - 데이터 많음, 넓은 공간
-  'Iceland': 0.54,              // 북미에 가까움 (0.56 → 0.54)
-  'Ireland': 0.56,              // 대서양 가까움 (0.59 → 0.56)
-  'United Kingdom': 0.58,       // 대서양 가까움 (0.62 → 0.58)
+  // Europe (0.53-0.85) - ?곗씠??留롮쓬, ?볦? 怨듦컙
+  'Iceland': 0.54,              // 遺곷???媛源뚯? (0.56 ??0.54)
+  'Ireland': 0.56,              // ??쒖뼇 媛源뚯? (0.59 ??0.56)
+  'United Kingdom': 0.58,       // ??쒖뼇 媛源뚯? (0.62 ??0.58)
   'UK': 0.58,
   'England': 0.58,
   'Portugal': 0.65,
@@ -166,9 +107,9 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'Norway': 0.76,
   'Sweden': 0.77,
   'Finland': 0.78,
-  'Poland': 0.79,               // 동유럽, 아시아에 가까움
-  'Russia': 0.82,               // 아시아에 가까움
-  'Turkey': 0.84,               // 아시아에 가까움
+  'Poland': 0.79,               // ?숈쑀?? ?꾩떆?꾩뿉 媛源뚯?
+  'Russia': 0.82,               // ?꾩떆?꾩뿉 媛源뚯?
+  'Turkey': 0.84,               // ?꾩떆?꾩뿉 媛源뚯?
   
   // Asia (0.85-0.93)
   'Pakistan': 0.855,
@@ -186,23 +127,13 @@ const COUNTRY_Y_POSITION: Record<string, number> = {
   'Singapore': 0.925,
   'Indonesia': 0.925,
   
-  // Oceania (0.93-1.00) - 최하단
+  // Oceania (0.93-1.00) - 理쒗븯??
   'Australia': 0.95,
   'New Zealand': 0.975,
 };
 
-// 지역별 기본 Y 위치 (국가 정보가 없을 때 사용)
-const REGION_DEFAULT_Y: Record<string, number> = {
-  'Africa': 0.04,
-  'South America': 0.13,
-  'Caribbean': 0.205,
-  'North America': 0.375,
-  'Europe': 0.70,
-  'Asia': 0.89,
-  'Oceania': 0.965,
-};
 
-// 문자열을 숫자로 변환 (시드 생성)
+// 臾몄옄?댁쓣 ?レ옄濡?蹂??(?쒕뱶 ?앹꽦)
 const hashCode = (str: string): number => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -213,65 +144,65 @@ const hashCode = (str: string): number => {
   return Math.abs(hash);
 };
 
-// 가우시안(정규분포) 변환 함수 (중심 밀집 효과)
+// 媛?곗떆???뺢퇋遺꾪룷) 蹂???⑥닔 (以묒떖 諛吏??④낵)
 const gaussianTransform = (uniform: number, mean: number = 0.5, stdDev: number = 0.25): number => {
-  // Box-Muller 변환을 사용한 가우시안 분포
+  // Box-Muller 蹂?섏쓣 ?ъ슜??媛?곗떆??遺꾪룷
   const u1 = uniform;
   const u2 = (hashCode(uniform.toString()) % 10000) / 10000;
   const z0 = Math.sqrt(-2.0 * Math.log(Math.max(u1, 0.0001))) * Math.cos(2.0 * Math.PI * u2);
   
-  // 정규화 및 클리핑
+  // ?뺢퇋??諛??대━??
   let gaussian = mean + z0 * stdDev;
   gaussian = Math.max(0, Math.min(1, gaussian));
   
   return gaussian;
 };
 
-// Y 좌표 생성: 지역 명확히 구분 + 지역 내 중심 밀집 + 자연스러운 경계 블렌딩
+// Y 醫뚰몴 ?앹꽦: 吏??紐낇솗??援щ텇 + 吏????以묒떖 諛吏?+ ?먯뿰?ㅻ윭??寃쎄퀎 釉붾젋??
 const getY = (country: string | undefined, region: string, albumId: string, vibe: number): number => {
-  // 1. 해당 지역의 Y축 범위 가져오기
+  // 1. ?대떦 吏??쓽 Y異?踰붿쐞 媛?몄삤湲?
   const range = REGION_Y_RANGES[region];
   if (!range) {
-    return 0.5; // 기본값
+    return 0.5; // 湲곕낯媛?
   }
   
   const { min, max, center } = range;
   const regionSize = max - min;
   
-  // 2. 앨범 ID 기반 균등 랜덤 (0~1)
+  // 2. ?⑤쾾 ID 湲곕컲 洹좊벑 ?쒕뜡 (0~1)
   const seed = hashCode(albumId + 'y');
   const uniformRandom = (seed % 10000) / 10000;
   
-  // 3. 가우시안 분포 적용 (중심으로 밀집, stdDev로 퍼짐 조절)
-  // stdDev = 0.2: 중심에 80% 밀집, 양 끝으로 자연스럽게 감소
+  // 3. 媛?곗떆??遺꾪룷 ?곸슜 (以묒떖?쇰줈 諛吏? stdDev濡??쇱쭚 議곗젅)
+  // stdDev = 0.2: 以묒떖??80% 諛吏? ???앹쑝濡??먯뿰?ㅻ읇寃?媛먯냼
   const gaussianY = gaussianTransform(uniformRandom, 0.5, 0.2);
   
-  // 4. vibe 기반 미세 조정
+  // 4. vibe 湲곕컲 誘몄꽭 議곗젙
   const vibeOffset = (vibe - 0.5) * 0.1; // -0.05 ~ +0.05
   
-  // 5. 최종 상대 위치 (0~1, 중심에 밀집)
+  // 5. 理쒖쥌 ?곷? ?꾩튂 (0~1, 以묒떖??諛吏?
   let relativeY = gaussianY + vibeOffset;
   
-  // 6. 국가 정보가 있으면 약간의 편향 추가 (5%)
+  // 6. 援?? ?뺣낫媛 ?덉쑝硫??쎄컙???명뼢 異붽? (5%)
   if (country && COUNTRY_Y_POSITION[country]) {
     const countryAbsoluteY = COUNTRY_Y_POSITION[country];
-    // 국가 위치를 지역 내 상대 위치로 변환
+    // 援?? ?꾩튂瑜?吏?????곷? ?꾩튂濡?蹂??
     let countryBias = (countryAbsoluteY - min) / regionSize;
     countryBias = Math.max(0, Math.min(1, countryBias));
     relativeY = relativeY * 0.95 + countryBias * 0.05;
   }
   
-  // 7. 클리핑 (0~1)
+  // 7. ?대━??(0~1)
   relativeY = Math.max(0, Math.min(1, relativeY));
   
-  // 8. 최종 Y 좌표: 지역 범위 내 상대 위치를 절대 위치로 변환
+  // 8. 理쒖쥌 Y 醫뚰몴: 吏??踰붿쐞 ???곷? ?꾩튂瑜??덈? ?꾩튂濡?蹂??
   const finalY = min + relativeY * regionSize;
   
-  // 0-1 범위 내로 제한
+  // 0-1 踰붿쐞 ?대줈 ?쒗븳
   return Math.max(0, Math.min(1, finalY));
 };
 
-// 날짜를 연도 내 비율로 변환 (0.0 ~ 1.0)
+// ?좎쭨瑜??곕룄 ??鍮꾩쑉濡?蹂??(0.0 ~ 1.0)
 const getDayOfYearRatio = (dateString: string): number => {
   const date = new Date(dateString);
   const year = date.getFullYear();
@@ -282,117 +213,117 @@ const getDayOfYearRatio = (dateString: string): number => {
   return dayOfYear / daysInYear;
 };
 
-// X 좌표 생성: 실제 발매일 기반 (날짜가 없으면 연중 랜덤 분산)
+// X 醫뚰몴 ?앹꽦: ?ㅼ젣 諛쒕ℓ??湲곕컲 (?좎쭨媛 ?놁쑝硫??곗쨷 ?쒕뜡 遺꾩궛)
 const getX = (year: number, releaseDate: string | undefined, albumId: string): number => {
   if (releaseDate) {
     try {
-      // 정확하지 않은 날짜(01-01, 12-31)는 랜덤 분산
+      // ?뺥솗?섏? ?딆? ?좎쭨(01-01, 12-31)???쒕뜡 遺꾩궛
       const isApproximateDate = releaseDate.endsWith('-01-01') || releaseDate.endsWith('-12-31');
       
       if (isApproximateDate) {
-        // 연도만 있는 경우: 연도 내에서 랜덤 분산
+        // ?곕룄留??덈뒗 寃쎌슦: ?곕룄 ?댁뿉???쒕뜡 遺꾩궛
         const seed = hashCode(albumId + 'x');
         const dayRatio = 0.1 + ((seed % 10000) / 10000) * 0.8;
         return year + dayRatio;
       } else {
-        // 정확한 발매일이 있으면 그 날짜 사용
+        // ?뺥솗??諛쒕ℓ?쇱씠 ?덉쑝硫?洹??좎쭨 ?ъ슜
         const dayRatio = getDayOfYearRatio(releaseDate);
         return year + dayRatio;
       }
     } catch (e) {
-      // 날짜 파싱 실패 시 폴백
+      // ?좎쭨 ?뚯떛 ?ㅽ뙣 ???대갚
       console.warn(`Failed to parse release date: ${releaseDate}`, e);
     }
   }
   
-  // 날짜가 없으면 연도 내에서 랜덤하게 분산 (0.1 ~ 0.9)
+  // ?좎쭨媛 ?놁쑝硫??곕룄 ?댁뿉???쒕뜡?섍쾶 遺꾩궛 (0.1 ~ 0.9)
   const seed = hashCode(albumId + 'x');
   const dayRatio = 0.1 + ((seed % 10000) / 10000) * 0.8;
   return year + dayRatio;
 };
 
-// 장르별 색상 매핑
+// ?λⅤ蹂??됱긽 留ㅽ븨
 const GENRE_RGB: Record<string, [number, number, number]> = {
-  // 록/메탈
-  'Rock': [239, 68, 68],           // 빨강
+  // 濡?硫뷀깉
+  'Rock': [239, 68, 68],           // 鍮④컯
   'Hard Rock': [220, 38, 38],
   'Metal': [127, 29, 29],
-  'Alternative': [251, 146, 60],    // 주황
+  'Alternative': [251, 146, 60],    // 二쇳솴
   'Indie': [253, 186, 116],
   'Punk': [234, 88, 12],
-  'Alternative/Indie': [251, 146, 60], // DB 실제 장르
+  'Alternative/Indie': [251, 146, 60], // DB ?ㅼ젣 ?λⅤ
   
-  // 팝/댄스
-  'Pop': [236, 72, 153],            // 핑크
+  // ???꾩뒪
+  'Pop': [236, 72, 153],            // ?묓겕
   'Dance': [219, 39, 119],
-  'Electronic': [168, 85, 247],     // 보라
+  'Electronic': [168, 85, 247],     // 蹂대씪
   'EDM': [147, 51, 234],
   'House': [126, 34, 206],
   'Techno': [107, 33, 168],
   
-  // 힙합/R&B
-  'Hip Hop': [234, 179, 8],         // 금색
+  // ?숉빀/R&B
+  'Hip Hop': [234, 179, 8],         // 湲덉깋
   'Rap': [202, 138, 4],
-  'R&B': [132, 204, 22],            // 라임
+  'R&B': [132, 204, 22],            // ?쇱엫
   'Soul': [101, 163, 13],
-  'R&B/Soul': [132, 204, 22],       // DB 실제 장르
+  'R&B/Soul': [132, 204, 22],       // DB ?ㅼ젣 ?λⅤ
   
-  // 재즈/블루스
-  'Jazz': [59, 130, 246],           // 파랑
+  // ?ъ쫰/釉붾（??
+  'Jazz': [59, 130, 246],           // ?뚮옉
   'Blues': [37, 99, 235],
   'Funk': [29, 78, 216],
-  'Jazz/Blues': [59, 130, 246],     // DB 실제 장르
+  'Jazz/Blues': [59, 130, 246],     // DB ?ㅼ젣 ?λⅤ
   
-  // 클래식/포크
-  'Classical': [167, 139, 250],     // 연보라 (우아함)
-  'Folk': [134, 239, 172],          // 민트
-  'Country': [74, 222, 128],        // 초록
-  'Folk/World': [134, 239, 172],    // DB 실제 장르
+  // ?대옒???ы겕
+  'Classical': [167, 139, 250],     // ?곕낫??(?곗븘??
+  'Folk': [134, 239, 172],          // 誘쇳듃
+  'Country': [74, 222, 128],        // 珥덈줉
+  'Folk/World': [134, 239, 172],    // DB ?ㅼ젣 ?λⅤ
   
-  // 월드/기타
-  'World': [251, 191, 36],          // 노랑
+  // ?붾뱶/湲고?
+  'World': [251, 191, 36],          // ?몃옉
   'Latin': [245, 158, 11],
-  'Reggae': [20, 184, 166],         // 청록
-  'K-Pop': [244, 114, 182],         // 핑크
-  'J-Pop': [217, 70, 239],          // 자주색
-  'K-pop/Asia Pop': [244, 114, 182], // DB 실제 장르
+  'Reggae': [20, 184, 166],         // 泥?줉
+  'K-Pop': [244, 114, 182],         // ?묓겕
+  'J-Pop': [217, 70, 239],          // ?먯＜??
+  'K-pop/Asia Pop': [244, 114, 182], // DB ?ㅼ젣 ?λⅤ
   
   // Unknown
-  'Unknown': [148, 163, 184],       // 회색
+  'Unknown': [148, 163, 184],       // ?뚯깋
   
-  // 기본값
-  'Other': [148, 163, 184],         // 회색
+  // 湲곕낯媛?
+  'Other': [148, 163, 184],         // ?뚯깋
 };
 
-// 🎨 장르 색상 매칭 헬퍼 (스마트 매칭)
+// ?렓 ?λⅤ ?됱긽 留ㅼ묶 ?ы띁 (?ㅻ쭏??留ㅼ묶)
 const getGenreColor = (genre: string | undefined | null): [number, number, number] => {
   if (!genre) return GENRE_RGB['Other'];
   
-  // 1. 정확한 매칭 (대소문자 구분)
+  // 1. ?뺥솗??留ㅼ묶 (??뚮Ц??援щ텇)
   if (GENRE_RGB[genre]) return GENRE_RGB[genre];
   
-  // 2. 대소문자 무시 매칭
+  // 2. ??뚮Ц??臾댁떆 留ㅼ묶
   const lowerGenre = genre.toLowerCase();
   const matchedKey = Object.keys(GENRE_RGB).find(key => key.toLowerCase() === lowerGenre);
   if (matchedKey) return GENRE_RGB[matchedKey];
   
-  // 3. 슬래시(/) 분리된 경우 첫 번째 장르 사용
+  // 3. ?щ옒??/) 遺꾨━??寃쎌슦 泥?踰덉㎏ ?λⅤ ?ъ슜
   if (genre.includes('/')) {
     const firstGenre = genre.split('/')[0].trim();
     if (GENRE_RGB[firstGenre]) return GENRE_RGB[firstGenre];
     
-    // 대소문자 무시 재시도
+    // ??뚮Ц??臾댁떆 ?ъ떆??
     const matchedFirst = Object.keys(GENRE_RGB).find(key => key.toLowerCase() === firstGenre.toLowerCase());
     if (matchedFirst) return GENRE_RGB[matchedFirst];
   }
   
-  // 4. 부분 매칭 (포함 관계)
+  // 4. 遺遺?留ㅼ묶 (?ы븿 愿怨?
   const partialMatch = Object.keys(GENRE_RGB).find(key => 
     lowerGenre.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerGenre)
   );
   if (partialMatch) return GENRE_RGB[partialMatch];
   
-  // 5. 기본값
+  // 5. 湲곕낯媛?
   return GENRE_RGB['Other'];
 };
 
@@ -455,7 +386,7 @@ export const MapCanvas: React.FC = () => {
     }
   }, [selectedAlbumId, clickedAlbum, selectedArtist]);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const minZoomRef = React.useRef(-0.5);
+  const minZoomRef = React.useRef(-1.6);
   const baseTargetRef = React.useRef<[number, number, number]>([
     WORLD_WIDTH / 2,
     WORLD_HEIGHT * 0.6,
@@ -471,14 +402,14 @@ export const MapCanvas: React.FC = () => {
 
   const showGrid = true;
 
-  // scales를 먼저 정의
+  // scales瑜?癒쇱? ?뺤쓽
   const scales = useMemo(() => {
     const xScale = scaleLinear().domain([MIN_YEAR, MAX_YEAR + 1]).range([0, WORLD_WIDTH]);
     const yScale = scaleLinear().domain([0, 1]).range([WORLD_HEIGHT, 0]);
     return { xScale, yScale };
   }, []);
 
-  // 화면 크기 감지 및 초기 zoom 조정
+  // ?붾㈃ ?ш린 媛먯? 諛?珥덇린 zoom 議곗젙
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
   useEffect(() => {
@@ -495,7 +426,7 @@ export const MapCanvas: React.FC = () => {
         const minRatio = Math.min(widthRatio, heightRatio);
 
         // Fit world to viewport with extra padding so the node field starts more zoomed-out.
-        const paddingScale = width < 640 ? 0.7 : 0.8;
+        const paddingScale = width < 640 ? 0.6 : 0.7;
         const fitZoom = Math.log2(minRatio * paddingScale);
         const aspect = width / height;
         const aspectBias =
@@ -503,7 +434,7 @@ export const MapCanvas: React.FC = () => {
           aspect <= 0.85 ? -0.2 :
           (aspect - 1.0) * 0.2;
         const adjustedInitialZoom = fitZoom + aspectBias;
-        const cappedInitialZoom = Math.max(Math.min(adjustedInitialZoom, 0.1), -2.0);
+        const cappedInitialZoom = Math.max(Math.min(adjustedInitialZoom, 0.1), -2.2);
         minZoomRef.current = cappedInitialZoom;
         baseTargetRef.current = [WORLD_WIDTH / 2, WORLD_HEIGHT * 0.5, 0];
 
@@ -524,9 +455,9 @@ export const MapCanvas: React.FC = () => {
 
   
 
-  // 디버깅: 데이터 확인 (scales 정의 후)
+  // ?붾쾭源? ?곗씠???뺤씤 (scales ?뺤쓽 ??
   useEffect(() => {
-    console.log('🗺️ MapCanvas Debug:');
+    console.log('?뿺截?MapCanvas Debug:');
     console.log('  - Total albums:', filteredAlbums.length);
     console.log('  - ViewState zoom:', viewState.zoom.toFixed(2));
     if (filteredAlbums.length > 0 && scales) {
@@ -539,21 +470,19 @@ export const MapCanvas: React.FC = () => {
     }
   }, [filteredAlbums.length, viewState.zoom, scales]);
 
-  // viewport 변경 감지 (검색 시 부드러운 이동)
+  // viewport 蹂寃?媛먯? (寃????遺?쒕윭???대룞)
   const [isAnimating, setIsAnimating] = React.useState(false);
-  const [showRegionLabels, setShowRegionLabels] = React.useState(false);
-  const regionLabelTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
-    console.log('📍 Viewport update:', viewport);
+    console.log('?뱧 Viewport update:', viewport);
     
     if (viewport.k > 1) {
-       // 앨범 좌표를 픽셀 좌표로 변환
+       // ?⑤쾾 醫뚰몴瑜??쎌? 醫뚰몴濡?蹂??
        const targetX = scales.xScale(viewport.x);
        const targetY = scales.yScale(viewport.y);
        const targetZoom = Math.log2(viewport.k);
        
-       // 선택된 앨범의 실제 렌더링 위치 계산 (디버그용)
+       // ?좏깮???⑤쾾???ㅼ젣 ?뚮뜑留??꾩튂 怨꾩궛 (?붾쾭洹몄슜)
        if (selectedAlbumId) {
          const selectedAlbum = albums.find(a => a.id === selectedAlbumId);
          if (selectedAlbum) {
@@ -562,13 +491,13 @@ export const MapCanvas: React.FC = () => {
            const albumPixelX = scales.xScale(albumXValue);
            const albumPixelY = scales.yScale(albumYValue);
            
-           console.log('🎯 Selected album actual position:', {
+           console.log('?렞 Selected album actual position:', {
              'albumXValue (year+offset)': albumXValue,
              'albumYValue (region+vibe)': albumYValue,
              'albumPixelX': albumPixelX,
              'albumPixelY': albumPixelY,
-             'targetX (목표)': targetX,
-             'targetY (목표)': targetY,
+             'targetX (紐⑺몴)': targetX,
+             'targetY (紐⑺몴)': targetY,
              'diff': {
                x: Math.abs(albumPixelX - targetX),
                y: Math.abs(albumPixelY - targetY)
@@ -577,7 +506,7 @@ export const MapCanvas: React.FC = () => {
          }
        }
        
-       console.log('🚀 Animation details:', { 
+       console.log('?? Animation details:', { 
          'viewport.x (year)': viewport.x,
          'viewport.y (vibe)': viewport.y,
          'viewport.k (zoom)': viewport.k,
@@ -592,7 +521,7 @@ export const MapCanvas: React.FC = () => {
        
        setIsAnimating(true);
        
-       // 부드러운 애니메이션
+       // 遺?쒕윭???좊땲硫붿씠??
        const newViewState = {
          target: [targetX, targetY, 0] as [number, number, number],
          zoom: targetZoom,
@@ -601,25 +530,25 @@ export const MapCanvas: React.FC = () => {
          transitionInterpolator: new LinearInterpolator(['target', 'zoom']) as any
        };
        
-       console.log('✅ Setting viewState:', newViewState);
+       console.log('??Setting viewState:', newViewState);
        setViewState(newViewState);
        
-       // 애니메이션 종료 후 플래그 리셋
+       // ?좊땲硫붿씠??醫낅즺 ???뚮옒洹?由ъ뀑
        setTimeout(() => {
-         console.log('✅ Animation complete');
+         console.log('??Animation complete');
          setIsAnimating(false);
        }, 2000);
     }
   }, [viewport.x, viewport.y, viewport.k, scales, selectedAlbumId, albums]);
 
   const layers = useMemo(() => {
-    console.log('🎨 Creating layers with', filteredAlbums.length, 'albums');
+    console.log('?렓 Creating layers with', filteredAlbums.length, 'albums');
     
-    // 부드러운 페이드를 위해 0-1 범위로 계산
+    // 遺?쒕윭???섏씠?쒕? ?꾪빐 0-1 踰붿쐞濡?怨꾩궛
     const gridVisible = showGrid ? 1.0 : 0.0;
     
     return [
-      // 지역 구분선 (가로선)
+      // 吏??援щ텇??(媛濡쒖꽑)
       new LineLayer({
         id: 'region-lines',
         data: (() => {
@@ -654,13 +583,13 @@ export const MapCanvas: React.FC = () => {
         }
       }),
       
-      // 1950년 기준선 (시작 기준선, 은은하게)
+      // 1950??湲곗???(?쒖옉 湲곗??? ???섍쾶)
       new LineLayer({
         id: 'baseline-1950',
         data: [{ year: 1950 }],
         getSourcePosition: (d: any) => [scales.xScale(d.year), 0, 0],
         getTargetPosition: (d: any) => [scales.xScale(d.year), WORLD_HEIGHT, 0],
-        getColor: [0, 0, 0, 150], // 검은색
+        getColor: [0, 0, 0, 150], // 寃???
         getWidth: 1.5,
         opacity: gridVisible * 0.8,
         transitions: {
@@ -674,53 +603,53 @@ export const MapCanvas: React.FC = () => {
         }
       }),
       
-      // 연도 구분선 (세로선, 줌 레벨에 따라 동적) - 10년 단위는 항상 유지
+      // ?곕룄 援щ텇??(?몃줈?? 以??덈꺼???곕씪 ?숈쟻) - 10???⑥쐞????긽 ?좎?
       new LineLayer({
         id: 'year-lines',
         data: (() => {
-          // 뷰포트에서 보이는 연도 범위 계산
+          // 酉고룷?몄뿉??蹂댁씠???곕룄 踰붿쐞 怨꾩궛
           const visibleYearRange = viewportYearRange[1] - viewportYearRange[0];
           
-          // 줌 레벨에 따른 기본 선 간격 결정
-          let yearInterval = 10; // 기본 10년 단위 (50년 이상)
-          let showMonths = false; // 월 단위 표시 여부
+          // 以??덈꺼???곕Ⅸ 湲곕낯 ??媛꾧꺽 寃곗젙
+          let yearInterval = 10; // 湲곕낯 10???⑥쐞 (50???댁긽)
+          let showMonths = false; // ???⑥쐞 ?쒖떆 ?щ?
           
           if (visibleYearRange <= 3) {
-            yearInterval = 1; // 3년 이하: 1년 단위
-            showMonths = true; // 월 단위도 표시
+            yearInterval = 1; // 3???댄븯: 1???⑥쐞
+            showMonths = true; // ???⑥쐞???쒖떆
           } else if (visibleYearRange <= 20) {
-            yearInterval = 1; // 20년 이하: 1년 단위
+            yearInterval = 1; // 20???댄븯: 1???⑥쐞
           } else if (visibleYearRange <= 50) {
-            yearInterval = 5; // 20-50년: 5년 단위
+            yearInterval = 5; // 20-50?? 5???⑥쐞
           }
           
           const lines = [];
-          const startYear = Math.floor(viewportYearRange[0] / 10) * 10; // 10년 단위로 시작
+          const startYear = Math.floor(viewportYearRange[0] / 10) * 10; // 10???⑥쐞濡??쒖옉
           const endYear = Math.ceil(viewportYearRange[1] / 10) * 10;
           
-          // 10년 단위는 항상 추가 (밝게 유지)
+          // 10???⑥쐞????긽 異붽? (諛앷쾶 ?좎?)
           for (let year = startYear; year <= endYear; year += 10) {
             if (year >= MIN_YEAR && year <= MAX_YEAR) {
               lines.push({ 
                 year, 
                 isDecade: true,
                 interval: 10,
-                baseOpacity: 1.0  // 항상 밝게
+                baseOpacity: 1.0  // ??긽 諛앷쾶
               });
             }
           }
           
-          // 추가 세밀한 선들 (5년 또는 1년 단위)
+          // 異붽? ?몃????좊뱾 (5???먮뒗 1???⑥쐞)
           if (yearInterval < 10) {
             const fineStart = Math.floor(viewportYearRange[0] / yearInterval) * yearInterval;
             const fineEnd = Math.ceil(viewportYearRange[1] / yearInterval) * yearInterval;
             
             for (let year = fineStart; year <= fineEnd; year += yearInterval) {
-              // 10년 단위는 이미 추가했으므로 건너뛰기
+              // 10???⑥쐞???대? 異붽??덉쑝誘濡?嫄대꼫?곌린
               if (year % 10 === 0) continue;
               
               if (year >= MIN_YEAR && year <= MAX_YEAR) {
-                const baseOpacity = yearInterval === 1 ? 0.3 : 1.0; // 1년 단위는 투명하게
+                const baseOpacity = yearInterval === 1 ? 0.3 : 1.0; // 1???⑥쐞???щ챸?섍쾶
                 lines.push({ 
                   year, 
                   isDecade: false,
@@ -731,21 +660,21 @@ export const MapCanvas: React.FC = () => {
             }
           }
           
-          // 월 단위 라인 추가 (3년 이하일 때만)
+          // ???⑥쐞 ?쇱씤 異붽? (3???댄븯???뚮쭔)
           if (showMonths) {
             const monthStart = Math.floor(viewportYearRange[0]);
             const monthEnd = Math.ceil(viewportYearRange[1]);
             
             for (let year = monthStart; year <= monthEnd; year++) {
               if (year >= MIN_YEAR && year <= MAX_YEAR) {
-                // 각 연도의 12개월 (1월부터 11월까지, 12월은 다음 해 1월과 겹침)
+                // 媛??곕룄??12媛쒖썡 (1?붾???11?붽퉴吏, 12?붿? ?ㅼ쓬 ??1?붽낵 寃뱀묠)
                 for (let month = 1; month < 12; month++) {
                   const monthYear = year + month / 12;
                   lines.push({
                     year: monthYear,
                     isDecade: false,
                     interval: 1/12,
-                    baseOpacity: 0.15  // 매우 투명하게
+                    baseOpacity: 0.15  // 留ㅼ슦 ?щ챸?섍쾶
                   });
                 }
               }
@@ -757,13 +686,13 @@ export const MapCanvas: React.FC = () => {
         getSourcePosition: (d: any) => [scales.xScale(d.year), 0, 0],
         getTargetPosition: (d: any) => [scales.xScale(d.year), WORLD_HEIGHT, 0],
         getColor: (d: any) => {
-          const opacity = d.baseOpacity * gridVisible * 255;  // gridVisible 적용
+          const opacity = d.baseOpacity * gridVisible * 255;  // gridVisible ?곸슜
           return [209, 213, 219, opacity];  // gray-300
         },
         getWidth: (d: any) => {
-          if (d.isDecade) return 2.0; // 10년 단위: 굵게
-          if (d.interval === 1) return 0.5; // 1년 단위: 가장 얇게
-          return 1.0; // 5년 단위: 중간
+          if (d.isDecade) return 2.0; // 10???⑥쐞: 援듦쾶
+          if (d.interval === 1) return 0.5; // 1???⑥쐞: 媛???뉕쾶
+          return 1.0; // 5???⑥쐞: 以묎컙
         },
         transitions: {
           getColor: {
@@ -778,16 +707,16 @@ export const MapCanvas: React.FC = () => {
         }
       }),
       
-      // 연도 레이블 (최소 속성만 사용)
+      // ?곕룄 ?덉씠釉?(理쒖냼 ?띿꽦留??ъ슜)
       new TextLayer({
         id: 'year-labels',
         data: (() => {
           const visibleYearRange = viewportYearRange[1] - viewportYearRange[0];
           
-          // 레이블은 10년 단위로만 표시 (1년 단위일 때도)
+          // ?덉씠釉붿? 10???⑥쐞濡쒕쭔 ?쒖떆 (1???⑥쐞???뚮룄)
           let labelInterval = 10;
           if (visibleYearRange <= 20) {
-            labelInterval = 5; // 20년 이하: 5년 단위 레이블
+            labelInterval = 5; // 20???댄븯: 5???⑥쐞 ?덉씠釉?
           }
           
           const labels = [];
@@ -802,7 +731,7 @@ export const MapCanvas: React.FC = () => {
           return labels;
         })(),
         getPosition: (d: any) => {
-          // 화면 상단에 고정되도록 viewport 따라가기
+          // ?붾㈃ ?곷떒??怨좎젙?섎룄濡?viewport ?곕씪媛湲?
           const zoomScale = Math.pow(2, viewState.zoom);
           const visibleWorldHeight = WORLD_HEIGHT / zoomScale;
 
@@ -814,7 +743,7 @@ export const MapCanvas: React.FC = () => {
           return [scales.xScale(d.year), labelY, 0];
         },
         getText: (d: any) => String(d.year),
-        getColor: [0, 0, 0, 255],  // 검은색 텍스트
+        getColor: [0, 0, 0, 255],  // 寃????띿뒪??
         getSize: containerSize.width < 640 ? 10 : containerSize.width < 1024 ? 11 : 12,
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'center',
@@ -833,7 +762,7 @@ export const MapCanvas: React.FC = () => {
         }
       }),
       
-      // 지역 레이블 (각 지역 범위의 중심에 배치)
+      // 吏???덉씠釉?(媛?吏??踰붿쐞??以묒떖??諛곗튂)
       new TextLayer({
         id: 'region-labels',
         data: (() => {
@@ -868,21 +797,21 @@ export const MapCanvas: React.FC = () => {
           const rightEdgeX = viewState.target[0] + visibleWorldWidth / 2;
           const regionY = scales.yScale(d.y);
           
-          // 노드 영역 시작점 (X=0)
+          // ?몃뱶 ?곸뿭 ?쒖옉??(X=0)
           const nodeStartX = 0;
           
-          // 항상 노드 영역 왼쪽 밖에 고정 (-30)
-          // 줌인되면 자연스럽게 화면 안으로 들어옴
+          // ??긽 ?몃뱶 ?곸뿭 ?쇱そ 諛뽰뿉 怨좎젙 (-30)
+          // 以뚯씤?섎㈃ ?먯뿰?ㅻ읇寃??붾㈃ ?덉쑝濡??ㅼ뼱??
           const labelX = nodeStartX - 30;
           
           return [labelX, regionY, 0];
         },
-        getText: (d: any): string => containerSize.width < 640 ? d.text.split(' ')[0] : d.text, // 작은 화면에서는 첫 단어만
-        getColor: [0, 0, 0, 255],  // 검은색 텍스트
+        getText: (d: any): string => containerSize.width < 640 ? d.text.split(' ')[0] : d.text, // ?묒? ?붾㈃?먯꽌??泥??⑥뼱留?
+        getColor: [0, 0, 0, 255],  // 寃????띿뒪??
         getSize: containerSize.width < 640 ? 10 : containerSize.width < 1024 ? 12 : 14,
         outlineWidth: containerSize.width < 640 ? 2 : 3,
-        outlineColor: [255, 255, 255, 255],  // 흰색 outline
-        getTextAnchor: 'end' as const,  // 오른쪽 끝 기준 (왼쪽으로 뻗어나감)
+        outlineColor: [255, 255, 255, 255],  // ?곗깋 outline
+        getTextAnchor: 'end' as const,  // ?ㅻⅨ履???湲곗? (?쇱そ?쇰줈 六쀬뼱?섍컧)
         getAlignmentBaseline: 'center' as const,
         opacity: gridVisible,
         transitions: {
@@ -904,11 +833,11 @@ export const MapCanvas: React.FC = () => {
         id: 'albums-layer',
         data: filteredAlbums,
         getPosition: (d: Album) => {
-          // X축: 실제 발매일 기반 배치
+          // X異? ?ㅼ젣 諛쒕ℓ??湲곕컲 諛곗튂
           const xValue = getX(d.year, d.releaseDate, d.id);
           const x = scales.xScale(xValue);
           
-          // Y축: 국가 위도 기반 + 약간의 분산
+          // Y異? 援?? ?꾨룄 湲곕컲 + ?쎄컙??遺꾩궛
           const yValue = getY(d.country, d.region as string, d.id, d.vibe);
           const y = scales.yScale(yValue);
           
@@ -920,42 +849,42 @@ export const MapCanvas: React.FC = () => {
           const isSearchMatched = searchMatchedAlbumIds.includes(d.id);
           const hasSearchQuery = searchQuery.trim().length > 0;
           
-          // 🎨 장르 기반 색상 (스마트 매칭)
+          // ?렓 ?λⅤ 湲곕컲 ?됱긽 (?ㅻ쭏??留ㅼ묶)
           const genre = d.genres[0];
           const baseColor = getGenreColor(genre);
           
-          // 선택된 앨범: 가장 밝게 + 강조
+          // ?좏깮???⑤쾾: 媛??諛앷쾶 + 媛뺤“
           if (isSelected) {
             return [...baseColor, 255] as [number, number, number, number];
           }
           
-          // 검색 중일 때
+          // 寃??以묒씪 ??
           if (hasSearchQuery) {
-            // 검색 매칭된 앨범: 밝게 강조
+            // 寃??留ㅼ묶???⑤쾾: 諛앷쾶 媛뺤“
             if (isSearchMatched) {
               return [...baseColor, 255] as [number, number, number, number];
             }
-            // 검색 매칭 안된 앨범: 블러 처리 (매우 투명하게)
+            // 寃??留ㅼ묶 ?덈맂 ?⑤쾾: 釉붾윭 泥섎━ (留ㅼ슦 ?щ챸?섍쾶)
             return [...baseColor, 60] as [number, number, number, number];
           }
           
-          // 브러시된 앨범: 매우 밝게 (아티스트 검색 시)
+          // 釉뚮윭?쒕맂 ?⑤쾾: 留ㅼ슦 諛앷쾶 (?꾪떚?ㅽ듃 寃????
           if (isBrushed) {
             return [...baseColor, 240] as [number, number, number, number];
           }
           
-          // 타임슬라이드 범위 밖의 앨범: 블러 처리
+          // ??꾩뒳?쇱씠??踰붿쐞 諛뽰쓽 ?⑤쾾: 釉붾윭 泥섎━
           const inViewport = d.year >= viewportYearRange[0] && d.year <= viewportYearRange[1];
           if (!inViewport) {
             return [...baseColor, 80] as [number, number, number, number];
           }
           
-          // 다른 앨범이 선택/브러시된 경우: 살짝만 어둡게 (배경화, 하지만 여전히 보임)
+          // ?ㅻⅨ ?⑤쾾???좏깮/釉뚮윭?쒕맂 寃쎌슦: ?댁쭩留??대몼寃?(諛곌꼍?? ?섏?留??ъ쟾??蹂댁엫)
           if (selectedAlbumId || brushedAlbumIds.length > 0) {
             return [...baseColor, 180] as [number, number, number, number];
           }
           
-          // 기본 상태: 밝게 표시
+          // 湲곕낯 ?곹깭: 諛앷쾶 ?쒖떆
           return [...baseColor, 220] as [number, number, number, number];
         },
         getLineColor: [0, 0, 0, 255],
@@ -966,7 +895,7 @@ export const MapCanvas: React.FC = () => {
         },
         getRadius: (d: Album) => {
           const base = (d.popularity || 0.5) * 2.5 + 2;
-          // clickedAlbum이나 selectedAlbumId일 때 모두 크게 표시
+          // clickedAlbum?대굹 selectedAlbumId????紐⑤몢 ?ш쾶 ?쒖떆
           const isClicked = clickedAlbum?.album.id === d.id;
           const isSelected = d.id === selectedAlbumId;
           return (isClicked || isSelected) ? base * 1.8 : base;
@@ -985,14 +914,14 @@ export const MapCanvas: React.FC = () => {
         }
       },
       onClick: (info: PickingInfo) => {
-        console.log('🖱️ Click event:', info);
+        console.log('?뼮截?Click event:', info);
         if (info.object) {
           const album = info.object as Album;
-          console.log('🎵 Clicked album:', album.title, album.id);
-          // 작은 팝업만 표시 (selectAlbum 호출 안함)
+          console.log('?렦 Clicked album:', album.title, album.id);
+          // ?묒? ?앹뾽留??쒖떆 (selectAlbum ?몄텧 ?덊븿)
           setClickedAlbum({ x: info.x, y: info.y, album });
         } else {
-          console.log('🖱️ Clicked empty area');
+          console.log('?뼮截?Clicked empty area');
           setClickedAlbum(null);
         }
       },
@@ -1007,7 +936,7 @@ export const MapCanvas: React.FC = () => {
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {/* Vignette Effect - 완전 투명 (제거됨) */}
+      {/* Vignette Effect - ?꾩쟾 ?щ챸 (?쒓굅?? */}
     
 
       <div className="w-full h-full relative">
@@ -1016,8 +945,8 @@ export const MapCanvas: React.FC = () => {
           height="100%"
           viewState={viewState}
           eventRecognizerOptions={{
-            pan: { threshold: 10 },  // 10픽셀 이상 움직여야 드래그로 인식
-            tap: { threshold: 10 },  // 클릭 허용 범위
+            pan: { threshold: 10 },  // 10?쎌? ?댁긽 ?吏곸뿬???쒕옒洹몃줈 ?몄떇
+            tap: { threshold: 10 },  // ?대┃ ?덉슜 踰붿쐞
           }}
           onViewStateChange={({ viewState: newViewState, interactionState }: any) => {
             // ??? ?/??? ?, ?? ?? ???? ?? ?? ??
@@ -1040,41 +969,40 @@ export const MapCanvas: React.FC = () => {
               }
             }
             
-            // 그리드 표시 (줌/팬 중)
+            // 洹몃━???쒖떆 (以???以?
             
-            // 애니메이션 중이면 업데이트 무시
+            // ?좊땲硫붿씠??以묒씠硫??낅뜲?댄듃 臾댁떆
             if (isAnimating) {
-              console.log('⏸️ Skipping update during animation');
+              console.log('?몌툘 Skipping update during animation');
               return;
             }
             
-            // Zoom 제한 적용 (최대 6 = 약 1년이 화면에 꽉 참)
+            // Zoom ?쒗븳 ?곸슜 (理쒕? 6 = ??1?꾩씠 ?붾㈃??苑?李?
             let zoom = newViewState.zoom;
             const minZoom = minZoomRef.current ?? -2;
             zoom = Math.max(minZoom, Math.min(6, zoom));
             
-            // 경계 제한 (드래그만 제한, 줌은 자유롭게)
+            // 寃쎄퀎 ?쒗븳 (?쒕옒洹몃쭔 ?쒗븳, 以뚯? ?먯쑀濡?쾶)
             const zoomScale = Math.pow(2, zoom);
             const visibleWorldWidth = WORLD_WIDTH / zoomScale;
             const visibleWorldHeight = WORLD_HEIGHT / zoomScale;
 
-            const panPaddingX = WORLD_WIDTH * 0.22;
-            const panPaddingY = WORLD_HEIGHT * 0.12;
-            const minZoomForPan = (minZoomRef.current ?? -0.2) + 0.15;
-            const allowPanAtZoom = zoom >= minZoomForPan;
+            const panPaddingX = WORLD_WIDTH * 0.35;
+            const panPaddingY = WORLD_HEIGHT * 0.2;
+            const allowPanAtZoom = true;
             
-            // X축 경계 제한 (부드럽게)
+            // X異?寃쎄퀎 ?쒗븳 (遺?쒕읇寃?
             let targetX = newViewState.target[0];
             const halfVisibleX = visibleWorldWidth / 2;
             if (allowPanAtZoom && halfVisibleX < WORLD_WIDTH / 2) {
-              // 줌인 상태: 범위 내로 제한
+              // 以뚯씤 ?곹깭: 踰붿쐞 ?대줈 ?쒗븳
               targetX = Math.max(halfVisibleX - panPaddingX, Math.min(WORLD_WIDTH - halfVisibleX + panPaddingX, targetX));
             } else {
-              // 줌아웃 상태: 중앙 고정
+              // 以뚯븘???곹깭: 以묒븰 怨좎젙
               targetX = baseTargetRef.current[0];
             }
             
-            // Y축 경계 제한 (부드럽게)
+            // Y異?寃쎄퀎 ?쒗븳 (遺?쒕읇寃?
             let targetY = newViewState.target[1];
             const halfVisibleY = visibleWorldHeight / 2;
             if (allowPanAtZoom && halfVisibleY < WORLD_HEIGHT / 2) {
@@ -1083,7 +1011,7 @@ export const MapCanvas: React.FC = () => {
               targetY = baseTargetRef.current[1];
             }
             
-            // 일반 줌/팬: 즉시 반응
+            // ?쇰컲 以??? 利됱떆 諛섏쓳
             setViewState({
               target: [targetX, targetY, 0] as [number, number, number],
               zoom: zoom,
@@ -1091,7 +1019,7 @@ export const MapCanvas: React.FC = () => {
               transitionInterpolator: undefined as any
             });
               
-            // 뷰포트에서 보이는 연도 범위 계산
+            // 酉고룷?몄뿉??蹂댁씠???곕룄 踰붿쐞 怨꾩궛
             const leftX = Math.max(0, targetX - halfVisibleX);
             const rightX = Math.min(WORLD_WIDTH, targetX + halfVisibleX);
             
@@ -1139,7 +1067,7 @@ export const MapCanvas: React.FC = () => {
           }}
           getCursor={() => 'grab'}
           parameters={{
-            clearColor: [1, 1, 1, 1]  // 흰색 배경
+            clearColor: [1, 1, 1, 1]  // ?곗깋 諛곌꼍
           }}
         >
           {hoverInfo && !clickedAlbum && (
@@ -1149,7 +1077,7 @@ export const MapCanvas: React.FC = () => {
             </div>
           )}
           
-          {/* Clicked Album Popup (반응형, 크기 키움) */}
+          {/* Clicked Album Popup (諛섏쓳?? ?ш린 ?ㅼ?) */}
           {popupAlbum && (
             <div 
               ref={popupRef}
@@ -1161,11 +1089,21 @@ export const MapCanvas: React.FC = () => {
             >
               <div className="p-4 sm:p-5 md:p-6">
                 <div className="flex items-start gap-3 sm:gap-4 md:gap-5 mb-4">
-                  <img 
-                    src={popupAlbum.album.coverUrl} 
-                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-lg border border-white/20 shadow-lg" 
-                    alt={popupAlbum.album.title} 
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      selectAlbum(popupAlbum.album.id);
+                      setClickedAlbum(null);
+                    }}
+                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-lg border border-white/20 shadow-lg overflow-hidden flex-shrink-0 hover:scale-105 transition-transform"
+                    title="View detail"
+                  >
+                    <img 
+                      src={popupAlbum.album.coverUrl} 
+                      className="w-full h-full object-cover" 
+                      alt={popupAlbum.album.title} 
+                    />
+                  </button>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm sm:text-base md:text-lg font-bold text-black mb-1 truncate">{popupAlbum.album.title}</h3>
                     <button
@@ -1184,9 +1122,9 @@ export const MapCanvas: React.FC = () => {
                     </button>
                     <div className="flex items-center gap-2 mt-2 text-[10px] sm:text-xs md:text-sm text-gray-500">
                       <span>{popupAlbum.album.year}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{popupAlbum.album.country}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{popupAlbum.album.genres.slice(0, 2).join(', ')}</span>
                     </div>
                   </div>
@@ -1194,7 +1132,7 @@ export const MapCanvas: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      // View Detail 클릭: selectAlbum 호출하고 팝업 닫기
+                      // View Detail ?대┃: selectAlbum ?몄텧?섍퀬 ?앹뾽 ?リ린
                       selectAlbum(popupAlbum.album.id);
                       setClickedAlbum(null);
                     }}
@@ -1219,3 +1157,5 @@ export const MapCanvas: React.FC = () => {
     </div>
   );
 };
+
+

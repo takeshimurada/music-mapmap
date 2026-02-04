@@ -93,7 +93,7 @@ export const AppShell: React.FC = () => {
         <>
           {/* 배경 오버레이 - 클릭하면 패널 닫기 */}
           <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-45"
+            className="fixed inset-0 bg-white/40 backdrop-blur-sm z-45"
             onClick={() => useStore.getState().selectAlbum(null)}
           />
           <div className="fixed top-20 right-4 md:right-6 z-50 w-[320px] md:w-[400px] max-h-[calc(100vh-6rem)] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-right duration-300 flex flex-col">

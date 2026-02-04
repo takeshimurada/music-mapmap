@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useStore } from '../state/store';
 import { Album } from '../types';
 import { ChevronDown, Music2 } from 'lucide-react';
@@ -6,7 +6,7 @@ import { ChevronDown, Music2 } from 'lucide-react';
 const YEAR_MIN = 1950;
 const YEAR_MAX = 2026;
 
-// 장르 목록 (DB 실제 장르)
+// ?λⅤ 紐⑸줉 (DB ?ㅼ젣 ?λⅤ)
 const GENRES = [
   'All',
   'Rock',
@@ -27,25 +27,26 @@ const GENRES = [
   'Unknown'
 ];
 
-// 정렬 옵션
+// ?뺣젹 ?듭뀡
 const SORT_OPTIONS = [
+  { value: 'genre-random', label: 'Genre (Random)' },
   { value: 'popularity', label: 'Popularity' },
-  { value: 'newest', label: 'Newest → Oldest' },
-  { value: 'oldest', label: 'Oldest → Newest' },
-  { value: 'title-asc', label: 'Title (A → Z)' },
-  { value: 'title-desc', label: 'Title (Z → A)' },
-  { value: 'artist-asc', label: 'Artist (A → Z)' },
-  { value: 'artist-desc', label: 'Artist (Z → A)' },
+  { value: 'newest', label: 'Newest ??Oldest' },
+  { value: 'oldest', label: 'Oldest ??Newest' },
+  { value: 'title-asc', label: 'Title (A ??Z)' },
+  { value: 'title-desc', label: 'Title (Z ??A)' },
+  { value: 'artist-asc', label: 'Artist (A ??Z)' },
+  { value: 'artist-desc', label: 'Artist (Z ??A)' },
 ];
 
-// 앨범 카드 컴포넌트 (React.memo로 최적화)
+// ?⑤쾾 移대뱶 而댄룷?뚰듃 (React.memo濡?理쒖쟻??
 const AlbumCard: React.FC<{ album: Album; onClick: () => void }> = React.memo(({ album, onClick }) => {
   return (
     <div
       onClick={onClick}
       className="group cursor-pointer bg-white border border-gray-200 rounded overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
     >
-      {/* 앨범 커버 */}
+      {/* ?⑤쾾 而ㅻ쾭 */}
       <div className="relative aspect-square bg-gray-100 overflow-hidden">
         {album.coverUrl ? (
           <img
@@ -60,13 +61,13 @@ const AlbumCard: React.FC<{ album: Album; onClick: () => void }> = React.memo(({
           </div>
         )}
         
-        {/* 연도 배지 */}
+        {/* ?곕룄 諛곗? */}
         <div className="absolute top-2 right-2 px-2 py-0.5 bg-white/90 rounded text-[10px] font-medium text-black">
           {album.year}
         </div>
       </div>
 
-      {/* 정보 */}
+      {/* ?뺣낫 */}
       <div className="p-3">
         <h3 className="text-sm font-medium text-black mb-1 line-clamp-2">
           {album.title}
@@ -75,7 +76,7 @@ const AlbumCard: React.FC<{ album: Album; onClick: () => void }> = React.memo(({
           {album.artist}
         </p>
         
-        {/* 장르 & 국가 */}
+        {/* ?λⅤ & 援?? */}
         <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
           {album.genres[0] && (
             <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
@@ -97,20 +98,26 @@ export const ArchivePage: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [yearRange, setYearRange] = useState<[number, number]>([YEAR_MIN, YEAR_MAX]);
   const [selectedCountry, setSelectedCountry] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<string>('popularity');
-  const [displayCount, setDisplayCount] = useState(50); // 초기 표시 개수 (50개로 감소)
+  const [sortBy, setSortBy] = useState<string>('genre-random');
+  const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
+  const [displayCount, setDisplayCount] = useState(50); // 珥덇린 ?쒖떆 媛쒖닔 (50媛쒕줈 媛먯냼)
   const [draggingHandle, setDraggingHandle] = useState<'min' | 'max' | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
-  // Intersection Observer용 ref
+  // Intersection Observer??ref
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // 앨범 클릭 핸들러 최적화
+  useEffect(() => {
+    setSortBy('genre-random');
+    setRandomSeed(Date.now());
+  }, []);
+
+  // ?⑤쾾 ?대┃ ?몃뱾??理쒖쟻??
   const handleAlbumClick = useCallback((albumId: string) => {
     selectAlbum(albumId);
   }, [selectAlbum]);
 
-  // Load More 핸들러
+  // Load More ?몃뱾??
   const loadMore = useCallback(() => {
     setDisplayCount(prev => prev + 50);
   }, []);
@@ -182,22 +189,43 @@ export const ArchivePage: React.FC = () => {
   }, [draggingHandle, pointerToYear, updateRange]);
 
 
-  // 국가 목록 생성 (앨범이 있는 국가만)
+  // 援?? 紐⑸줉 ?앹꽦 (?⑤쾾???덈뒗 援??留?
   const countries = useMemo(() => {
     const countrySet = new Set(albums.map(a => a.country).filter(c => c));
     return ['All', ...Array.from(countrySet).sort()];
   }, [albums]);
 
-  // 필터링 & 정렬
+  const randomOrder = useMemo(() => {
+    const order = new Map<string, number>();
+    albums.forEach(album => {
+      order.set(album.id, Math.random());
+    });
+    return order;
+  }, [albums, randomSeed]);
+
+  const genreOrder = useMemo(() => {
+    const order = new Map<string, number>();
+    const genres = new Set<string>();
+    albums.forEach(album => {
+      const g = album.genres[0] || 'Unknown';
+      genres.add(g);
+    });
+    genres.forEach(genre => {
+      order.set(genre, Math.random());
+    });
+    return order;
+  }, [albums, randomSeed]);
+
+  // ?꾪꽣留?& ?뺣젹
   const filteredAlbums = useMemo(() => {
     let filtered = [...albums];
 
-    // 장르 필터
+    // ?λⅤ ?꾪꽣
     if (selectedGenre !== 'All') {
       filtered = filtered.filter(album => album.genres[0] === selectedGenre);
     }
 
-    // 연도 필터
+    // ?곕룄 ?꾪꽣
     if (yearRange[0] !== YEAR_MIN || yearRange[1] !== YEAR_MAX) {
       filtered = filtered.filter(album => album.year >= yearRange[0] && album.year <= yearRange[1]);
     }
@@ -219,6 +247,19 @@ export const ArchivePage: React.FC = () => {
     // sort
     filtered.sort((a, b) => {
       switch (sortBy) {
+        case 'genre-random': {
+          const genreA = a.genres[0] || 'Unknown';
+          const genreB = b.genres[0] || 'Unknown';
+          if (genreA !== genreB) {
+            const orderA = genreOrder.get(genreA) ?? 0;
+            const orderB = genreOrder.get(genreB) ?? 0;
+            if (orderA !== orderB) return orderA - orderB;
+            return genreA.localeCompare(genreB);
+          }
+          const ra = randomOrder.get(a.id) ?? 0;
+          const rb = randomOrder.get(b.id) ?? 0;
+          return ra - rb;
+        }
         case 'popularity':
           return (b.popularity || 0) - (a.popularity || 0);
         case 'newest':
@@ -238,20 +279,20 @@ export const ArchivePage: React.FC = () => {
       }
     });
 
-    // 필터 변경 시 displayCount 리셋
+    // ?꾪꽣 蹂寃???displayCount 由ъ뀑
     setDisplayCount(50);
 
     return filtered;
-  }, [albums, selectedGenre, yearRange, selectedCountry, sortBy, searchQuery]);
+  }, [albums, selectedGenre, yearRange, selectedCountry, sortBy, searchQuery, randomOrder]);
 
-  // 실제 표시할 앨범 (성능 최적화)
+  // ?ㅼ젣 ?쒖떆???⑤쾾 (?깅뒫 理쒖쟻??
   const displayedAlbums = useMemo(() => {
     return filteredAlbums.slice(0, displayCount);
   }, [filteredAlbums, displayCount]);
 
   const hasMore = filteredAlbums.length > displayCount;
 
-  // 무한 스크롤 구현 (Intersection Observer)
+  // 臾댄븳 ?ㅽ겕濡?援ы쁽 (Intersection Observer)
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
@@ -276,11 +317,11 @@ export const ArchivePage: React.FC = () => {
 
   return (
     <div className="absolute top-16 right-0 bottom-0 left-0 overflow-y-auto bg-white custom-scrollbar">
-      {/* 헤더 */}
+      {/* ?ㅻ뜑 */}
       <header className="sticky top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-6">
-            {/* 타이틀 */}
+            {/* ??댄? */}
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-black">
                 Archive
@@ -290,9 +331,9 @@ export const ArchivePage: React.FC = () => {
               </p>
             </div>
 
-            {/* 필터 & 정렬 */}
+            {/* ?꾪꽣 & ?뺣젹 */}
             <div className="flex items-center gap-2">
-              {/* 장르 필터 */}
+              {/* ?λⅤ ?꾪꽣 */}
               <div className="relative">
                 <select
                   value={selectedGenre}
@@ -308,7 +349,7 @@ export const ArchivePage: React.FC = () => {
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
 
-              {/* 연도 필터 */}
+              {/* ?곕룄 ?꾪꽣 */}
               {/* Years slider */}
               <div className="flex flex-col items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 min-h-[44px]">
                 <div
@@ -351,7 +392,7 @@ export const ArchivePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 국가 필터 */}
+              {/* 援?? ?꾪꽣 */}
               <div className="relative">
                 <select
                   value={selectedCountry}
@@ -367,7 +408,7 @@ export const ArchivePage: React.FC = () => {
                 <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
 
-              {/* 정렬 */}
+              {/* ?뺣젹 */}
               <div className="relative">
                 <select
                   value={sortBy}
@@ -387,7 +428,7 @@ export const ArchivePage: React.FC = () => {
         </div>
       </header>
 
-      {/* 그리드 */}
+      {/* 洹몃━??*/}
       <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 relative z-10">
         {filteredAlbums.length > 0 ? (
           <>
@@ -401,7 +442,7 @@ export const ArchivePage: React.FC = () => {
               ))}
             </div>
 
-            {/* 무한 스크롤 트리거 */}
+            {/* 臾댄븳 ?ㅽ겕濡??몃━嫄?*/}
             {hasMore && (
               <div ref={observerTarget} className="flex justify-center mt-8 py-8">
                 <div className="flex items-center gap-2 text-gray-400">
@@ -422,3 +463,9 @@ export const ArchivePage: React.FC = () => {
     </div>
   );
 };
+
+
+
+
+
+

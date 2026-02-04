@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sonic Topography | Music Discovery Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       .genre-scroll {
         scrollbar-gutter: stable;
@@ -51,6 +57,7 @@
       html, body, #root {
         height: 100%; width: 100%; margin: 0; padding: 0;
         background-color: #F8F8F8; color: #000000; overflow: hidden;
+        font-family: "Noto Sans", "Noto Sans KR", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
       .loader-spin { animation: spin 1s linear infinite; }

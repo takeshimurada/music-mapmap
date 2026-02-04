@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import base64
 import os
 from typing import List, Dict
@@ -13,6 +13,16 @@ SPOTIFY_ALBUMS_URL = "https://api.spotify.com/v1/albums"
 
 def chunk(items: List[str], size: int) -> List[List[str]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def is_broken(text: str) -> bool:
+    if not text:
+        return True
+    if "�" in text or "占" in text:
+        return True
+    if text.count("?") >= 2:
+        return True
+    return False
 
 
 async def get_spotify_token(session: aiohttp.ClientSession) -> str:
@@ -62,6 +72,8 @@ async def main() -> None:
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         raise RuntimeError("Missing DATABASE_URL")
+    if db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
     async with asyncpg.create_pool(dsn=db_url, min_size=1, max_size=4) as pool:
         async with pool.acquire() as conn:
@@ -69,7 +81,12 @@ async def main() -> None:
                 """
                 SELECT album_group_id
                 FROM album_groups
-                WHERE title LIKE '%?%' OR title LIKE '%�%'
+                WHERE title ~ '\\?{2,}'
+                   OR title LIKE '%�%'
+                   OR title LIKE '%占%'
+                   OR primary_artist_display ~ '\\?{2,}'
+                   OR primary_artist_display LIKE '%�%'
+                   OR primary_artist_display LIKE '%占%'
                 """
             )
             album_ids = [r["album_group_id"] for r in rows if r["album_group_id"].startswith("spotify:album:")]
@@ -93,18 +110,30 @@ async def main() -> None:
                         if not album or not album.get("id"):
                             continue
                         title = album.get("name") or ""
-                        if not title or "?" in title or "�" in title:
+                        artists = album.get("artists") or []
+                        artist_display = ", ".join([a.get("name", "") for a in artists if a.get("name")])
+
+                        if is_broken(title):
                             skipped += 1
                             continue
+
                         album_id = f"spotify:album:{album['id']}"
                         await conn.execute(
-                            "UPDATE album_groups SET title = $1, updated_at = NOW() WHERE album_group_id = $2",
+                            """
+                            UPDATE album_groups
+                            SET title = $1,
+                                primary_artist_display = CASE
+                                  WHEN primary_artist_display ~ '\\?{2,}'
+                                    OR primary_artist_display LIKE '%�%'
+                                    OR primary_artist_display LIKE '%占%'
+                                  THEN $2
+                                  ELSE primary_artist_display
+                                END,
+                                updated_at = NOW()
+                            WHERE album_group_id = $3
+                            """,
                             title,
-                            album_id,
-                        )
-                        await conn.execute(
-                            "UPDATE albums SET title = $1 WHERE id = $2",
-                            title,
+                            artist_display,
                             album_id,
                         )
                         fixed += 1

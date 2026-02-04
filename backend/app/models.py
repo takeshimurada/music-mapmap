@@ -1,4 +1,4 @@
-from sqlalchemy import (
+﻿from sqlalchemy import (
     Column,
     Integer,
     String,
@@ -22,6 +22,7 @@ from sqlalchemy.sql import func
 from .database import Base
 import uuid
 
+
 # ========================================
 # Migration Helper (temporary)
 # ========================================
@@ -32,7 +33,6 @@ class CreatorIdMap(Base):
 
     old_id = Column(String, primary_key=True)  # raw spotify artist id
     new_id = Column(String, unique=True, nullable=False)  # spotify:artist:<id>
-
 # ========================================
 # Core Entities
 # ========================================
@@ -63,7 +63,7 @@ class Creator(Base):
     image_url = Column(String, nullable=True)
     kind = Column(CreatorKind, nullable=False, server_default="person")
     primary_role_tag = Column(String, nullable=True)
-    country_code = Column(String, nullable=True)  # 🌍 아티스트 출신 국가 (ISO 2-letter code)
+    country_code = Column(String, nullable=True)  # ?뙇 ?꾪떚?ㅽ듃 異쒖떊 援?? (ISO 2-letter code)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -95,7 +95,7 @@ class AlbumGroup(Base):
     title = Column(String, nullable=False, index=True)
     primary_artist_display = Column(String, nullable=False, index=True)
     original_year = Column(Integer, index=True)
-    earliest_release_date = Column(Date, nullable=True)  # 캐시된 최초 릴리스 날짜 (성능 최적화)
+    earliest_release_date = Column(Date, nullable=True)  # 罹먯떆??理쒖큹 由대━???좎쭨 (?깅뒫 理쒖쟻??
     country_code = Column(String, nullable=True)
     primary_genre = Column(String, nullable=True)
     popularity = Column(Float, default=0.0)
@@ -291,6 +291,7 @@ class MapNode(Base):
 
     album_group = relationship("AlbumGroup", back_populates="map_node")
 
+
 class AlbumDetailsCache(Base):
     __tablename__ = "album_details_cache"
 
@@ -354,13 +355,12 @@ class AiResearch(Base):
     confidence = Column(Float)
     cache_key = Column(String, unique=True, index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
-
 # ========================================
-# Step 1: 개발용 유저 Like & 이벤트 로그 시스템
+# Step 1: 媛쒕컻???좎? Like & ?대깽??濡쒓렇 ?쒖뒪??
 # ========================================
 
 class DevUser(Base):
-    """개발용 유저 테이블 (Step 1 MVP)"""
+    """媛쒕컻???좎? ?뚯씠釉?(Step 1 MVP)"""
     __tablename__ = "dev_users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -371,7 +371,7 @@ class DevUser(Base):
     events = relationship("UserEvent", back_populates="user")
 
 class UserLike(Base):
-    """유저 좋아요 테이블"""
+    """User like table."""
     __tablename__ = "user_likes"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -389,7 +389,7 @@ class UserLike(Base):
     )
 
 class UserEvent(Base):
-    """유저 이벤트 로그 테이블"""
+    """User event log table."""
     __tablename__ = "user_events"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -406,4 +406,5 @@ class UserEvent(Base):
         Index('idx_user_created_at', 'user_id', 'created_at'),
         Index('idx_event_type', 'event_type'),
     )
+
 

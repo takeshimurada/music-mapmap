@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+﻿from pydantic import BaseModel
 from typing import List, Optional, Any, Literal
 from datetime import datetime, date
 from uuid import UUID
@@ -16,7 +16,7 @@ class AlbumBase(BaseModel):
 
 class AlbumResponse(AlbumBase):
     popularity: float
-    release_date: Optional[date] = None  # 대표 릴리스의 발매일
+    release_date: Optional[date] = None  # ???由대━?ㅼ쓽 諛쒕ℓ??
     created_at: datetime
     
     class Config:
@@ -52,7 +52,6 @@ class UserResponse(BaseModel):
     id: int
     email: str
     name: str
-
 class APIResponse(BaseModel):
     data: Any
     meta: Optional[dict] = None
@@ -168,7 +167,7 @@ class ArtistProfileResponse(BaseModel):
     relations: List[ArtistRelationResponse] = []
 
 # ========================================
-# Step 1: 개발용 유저 Like & 이벤트 로그 스키마
+# Step 1: 媛쒕컻???좎? Like & ?대깽??濡쒓렇 ?ㅽ궎留?
 # ========================================
 
 class DevUserCreateResponse(BaseModel):
@@ -198,3 +197,4 @@ class EventRequest(BaseModel):
 class EventResponse(BaseModel):
     status: str
     event_id: int
+

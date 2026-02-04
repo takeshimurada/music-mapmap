@@ -1,21 +1,20 @@
-import React, { useRef, useEffect } from 'react';
+﻿import React, { useRef, useEffect } from 'react';
 import { select, rollup, scaleLinear, max } from 'd3';
 import { useStore } from '../../state/store';
 import { Album } from '../../types';
 
-// 장르별 색상 (주요 장르만 표시)
+// ?λⅤ蹂??됱긽 (二쇱슂 ?λⅤ留??쒖떆)
 export const TimelineBar: React.FC = () => {
-  const { albums, viewportYearRange, setViewport } = useStore();
+  const { albums, viewportYearRange, setViewportYearRange } = useStore();
   const svgRef = useRef<SVGSVGElement>(null);
+  const minYear = 1950;
+  const maxYear = 2026;
   const [selectedYears, setSelectedYears] = React.useState({ 
     start: viewportYearRange[0], 
     end: viewportYearRange[1] 
   });
-
-  const minYear = 1950;
-  const maxYear = 2026;
   
-  // 왼쪽 드롭박스 옵션: 1950 ~ 선택된 끝 연도
+  // ?쇱そ ?쒕∼諛뺤뒪 ?듭뀡: 1950 ~ ?좏깮?????곕룄
   const startYearOptions = React.useMemo(() => {
     const years = [];
     for (let year = minYear; year <= selectedYears.end; year++) {
@@ -24,7 +23,7 @@ export const TimelineBar: React.FC = () => {
     return years;
   }, [selectedYears.end]);
 
-  // 오른쪽 드롭박스 옵션: 선택된 시작 연도 ~ 2026
+  // ?ㅻⅨ履??쒕∼諛뺤뒪 ?듭뀡: ?좏깮???쒖옉 ?곕룄 ~ 2026
   const endYearOptions = React.useMemo(() => {
     const years = [];
     for (let year = selectedYears.start; year <= maxYear; year++) {
@@ -33,7 +32,7 @@ export const TimelineBar: React.FC = () => {
     return years;
   }, [selectedYears.start]);
 
-  // 뷰포트 연도 범위가 변경되면 드롭박스도 업데이트
+  // 酉고룷???곕룄 踰붿쐞媛 蹂寃쎈릺硫??쒕∼諛뺤뒪???낅뜲?댄듃
   React.useEffect(() => {
     setSelectedYears({
       start: viewportYearRange[0],
@@ -41,32 +40,22 @@ export const TimelineBar: React.FC = () => {
     });
   }, [viewportYearRange[0], viewportYearRange[1]]);
 
-  // 시작 연도 변경 (왼쪽 박스)
+  // ?쒖옉 ?곕룄 蹂寃?(?쇱そ 諛뺤뒪)
   const handleStartYearChange = (year: number) => {
-    // 옵션에 이미 제한되어 있으므로 유효성 검사 불필요
+    // ?듭뀡???대? ?쒗븳?섏뼱 ?덉쑝誘濡??좏슚??寃??遺덊븘??
     setSelectedYears({ start: year, end: selectedYears.end });
+    setViewportYearRange([year, selectedYears.end]);
     
-    // 화면 이동 (범위에 따라 줌 레벨 자동 조정)
-    const centerYear = (year + selectedYears.end) / 2;
-    const yearSpan = selectedYears.end - year;
-    const zoomLevel = yearSpan > 30 ? 1.5 : yearSpan > 10 ? 2.5 : 3.5;
-    
-    console.log('📅 Start year changed:', { start: year, end: selectedYears.end, centerYear, zoomLevel, yearSpan });
-    setViewport({ x: centerYear, y: 0.5, k: zoomLevel });
+    console.log('?뱟 Start year changed:', { start: year, end: selectedYears.end });
   };
 
-  // 끝 연도 변경 (오른쪽 박스)
+  // ???곕룄 蹂寃?(?ㅻⅨ履?諛뺤뒪)
   const handleEndYearChange = (year: number) => {
-    // 옵션에 이미 제한되어 있으므로 유효성 검사 불필요
+    // ?듭뀡???대? ?쒗븳?섏뼱 ?덉쑝誘濡??좏슚??寃??遺덊븘??
     setSelectedYears({ start: selectedYears.start, end: year });
+    setViewportYearRange([selectedYears.start, year]);
     
-    // 화면 이동 (범위에 따라 줌 레벨 자동 조정)
-    const centerYear = (selectedYears.start + year) / 2;
-    const yearSpan = year - selectedYears.start;
-    const zoomLevel = yearSpan > 30 ? 1.5 : yearSpan > 10 ? 2.5 : 3.5;
-    
-    console.log('📅 End year changed:', { start: selectedYears.start, end: year, centerYear, zoomLevel, yearSpan });
-    setViewport({ x: centerYear, y: 0.5, k: zoomLevel });
+    console.log('?뱟 End year changed:', { start: selectedYears.start, end: year });
   };
 
   useEffect(() => {
@@ -77,7 +66,7 @@ export const TimelineBar: React.FC = () => {
     if (!container) return;
     
     const { width } = container.getBoundingClientRect();
-    const height = 32;  // 축소: 40 → 32
+    const height = 32;  // 異뺤냼: 40 ??32
     svg.selectAll("*").remove();
 
     const padding = 10;
@@ -106,16 +95,16 @@ export const TimelineBar: React.FC = () => {
       .attr("height", d => height - yScale(d.count))
       .attr("fill", d => {
         const inViewport = d.year >= viewportYearRange[0] && d.year <= viewportYearRange[1];
-        if (inViewport) return "#000000";  // 뷰포트(곧 필터)에 보이는 영역
-        return "#D1D5DB";  // 보이지 않는 영역 (밝은 회색)
+        if (inViewport) return "#000000";  // 酉고룷??怨??꾪꽣)??蹂댁씠???곸뿭
+        return "#D1D5DB";  // 蹂댁씠吏 ?딅뒗 ?곸뿭 (諛앹? ?뚯깋)
       })
       .attr("rx", 1)
-      .style("transition", "fill 0.5s ease");  // 부드러운 색상 전환
+      .style("transition", "fill 0.5s ease");  // 遺?쒕윭???됱긽 ?꾪솚
 
-    // 뷰포트 범위 시각화
+    // 酉고룷??踰붿쐞 ?쒓컖??
     const viewportOverlay = g.append("g").attr("class", "viewport-indicator");
     
-    // 왼쪽 어두운 영역
+    // ?쇱そ ?대몢???곸뿭
     viewportOverlay.append("rect")
       .attr("x", 0)
       .attr("y", 0)
@@ -124,7 +113,7 @@ export const TimelineBar: React.FC = () => {
       .attr("fill", "rgba(255, 255, 255, 0.7)")
       .attr("pointer-events", "none");
     
-    // 오른쪽 어두운 영역
+    // ?ㅻⅨ履??대몢???곸뿭
     viewportOverlay.append("rect")
       .attr("x", xScale(viewportYearRange[1]))
       .attr("y", 0)
@@ -133,7 +122,7 @@ export const TimelineBar: React.FC = () => {
       .attr("fill", "rgba(255, 255, 255, 0.7)")
       .attr("pointer-events", "none");
     
-    // 뷰포트 경계선 (왼쪽)
+    // 酉고룷??寃쎄퀎??(?쇱そ)
     viewportOverlay.append("line")
       .attr("x1", xScale(viewportYearRange[0]))
       .attr("y1", 0)
@@ -143,7 +132,7 @@ export const TimelineBar: React.FC = () => {
       .attr("stroke-width", 3)
       .attr("opacity", 1);
     
-    // 뷰포트 경계선 (오른쪽)
+    // 酉고룷??寃쎄퀎??(?ㅻⅨ履?
     viewportOverlay.append("line")
       .attr("x1", xScale(viewportYearRange[1]))
       .attr("y1", 0)
@@ -156,29 +145,29 @@ export const TimelineBar: React.FC = () => {
   }, [albums, viewportYearRange]);
 
   return (
-    <div className="w-full space-y-2">
-      {/* 장르 색상 인덱스 (축소) */}
+    <div className="w-full max-w-[460px] ml-auto space-y-2">
+      {/* ?λⅤ ?됱긽 ?몃뜳??(異뺤냼) */}
       <div className="flex justify-end items-center px-2">
-        {/* 연도 드롭박스 (동적 옵션) */}
+        {/* ?곕룄 ?쒕∼諛뺤뒪 (?숈쟻 ?듭뀡) */}
         <div className="flex items-center gap-2">
-          {/* 왼쪽: 1950 ~ 선택된 끝 연도 */}
+          {/* ?쇱そ: 1950 ~ ?좏깮?????곕룄 */}
           <select
             value={selectedYears.start}
             onChange={(e) => handleStartYearChange(parseInt(e.target.value))}
             className="w-20 px-2 py-1 text-xs font-mono font-semibold text-black bg-gray-50 border border-gray-300 rounded focus:ring-2 focus:ring-black/10 focus:border-black outline-none cursor-pointer hover:bg-gray-100 transition-colors"
-            title="시작 연도"
+            title="?쒖옉 ?곕룄"
           >
             {startYearOptions.map(year => (
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
-          <span className="text-gray-400 text-xs font-bold">—</span>
-          {/* 오른쪽: 선택된 시작 연도 ~ 2024 */}
+          <span className="text-gray-400 text-xs font-bold">·</span>
+          {/* ?ㅻⅨ履? ?좏깮???쒖옉 ?곕룄 ~ 2024 */}
           <select
             value={selectedYears.end}
             onChange={(e) => handleEndYearChange(parseInt(e.target.value))}
             className="w-20 px-2 py-1 text-xs font-mono font-semibold text-black bg-gray-50 border border-gray-300 rounded focus:ring-2 focus:ring-black/10 focus:border-black outline-none cursor-pointer hover:bg-gray-100 transition-colors"
-            title="끝 연도"
+            title="???곕룄"
           >
             {endYearOptions.map(year => (
               <option key={year} value={year}>{year}</option>
@@ -187,10 +176,11 @@ export const TimelineBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Histogram SVG (축소) */}
+      {/* Histogram SVG */}
       <div className="h-8 w-full px-2">
         <svg ref={svgRef} className="w-full h-full overflow-hidden" />
       </div>
     </div>
   );
 };
+
