@@ -12,11 +12,23 @@ type ArtistProfile = {
   display_name: string;
   bio?: string | null;
   image_url?: string | null;
+  debut_country_code?: string | null;
+  birth_country_code?: string | null;
   genres?: string[];
   spotify_url?: string | null;
   links?: { provider: string; url: string; external_id?: string | null; is_primary: boolean }[];
   discography?: { id: string; title: string; year?: number | null; cover_url?: string | null }[];
   relations?: { relation_type: string; creator_id: string; display_name: string }[];
+};
+
+const countryName = (code?: string | null): string | null => {
+  if (!code) return null;
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+    return dn.of(code.toUpperCase()) || code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
 };
 
 const getDiscographyRange = (albums: { year?: number | null }[]) => {
@@ -29,7 +41,7 @@ const getDiscographyRange = (albums: { year?: number | null }[]) => {
 };
 
 export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
-  const { selectedArtist, albums, selectAlbum, selectArtist } = useStore();
+  const { selectedArtist, albums, selectAlbumKeepArtist, selectArtist } = useStore();
   const resolvedArtist = artistName ?? selectedArtist;
   const [isLiked, setIsLiked] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
@@ -48,6 +60,11 @@ export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
 
   const coverUrl = profile?.image_url || (resolvedArtist ? albums.find(a => a.artist === resolvedArtist && a.coverUrl)?.coverUrl : '') || '';
   const yearRange = getDiscographyRange(artistAlbums);
+  const genreItems = profile?.genres?.slice(0, 6) ?? [];
+  const countryText =
+    countryName(profile?.debut_country_code) ||
+    countryName(profile?.birth_country_code) ||
+    '-';
 
   useEffect(() => {
     const fetchLikes = async () => {
@@ -136,9 +153,6 @@ export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-black leading-tight truncate">
             {profile?.display_name || resolvedArtist}
           </h2>
-          <p className="text-xs sm:text-sm text-gray-600">
-            {artistAlbums.length} albums{yearRange ? ` • ${yearRange}` : ''}
-          </p>
         </div>
       </div>
 
@@ -163,6 +177,29 @@ export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50 p-5">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.16em] text-gray-500">
+            <span>Country</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-[11px] normal-case tracking-normal font-semibold text-black whitespace-nowrap">{countryText}</span>
+          </div>
+          <div className="mt-1.5 text-[9px] uppercase tracking-[0.16em] text-gray-500">Genre</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {genreItems.length > 0 ? (
+              genreItems.map((g) => (
+                <span
+                  key={g}
+                  className="px-2 py-[2px] rounded-full border border-black/10 bg-black/[0.04] text-[10px] font-medium text-black/85"
+                >
+                  {g}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] text-gray-500">No genre tags</span>
+            )}
+          </div>
+        </div>
+
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">About</h3>
           <p className="text-sm text-gray-700">
@@ -176,15 +213,6 @@ export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
                   return `${name}. ${genreText}${rangeText}${artistAlbums.length} albums in this collection.`;
                 })()}
           </p>
-          {profile?.genres?.length ? (
-            <div className="mt-3 flex flex-wrap gap-1">
-              {profile.genres.slice(0, 6).map((g) => (
-                <span key={g} className="text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-600">
-                  {g}
-                </span>
-              ))}
-            </div>
-          ) : null}
           {profile?.spotify_url ? (
             <a
               href={profile.spotify_url}
@@ -251,8 +279,7 @@ export const ArtistPanel: React.FC<ArtistPanelProps> = ({ artistName }) => {
               </div>
               <button
                 onClick={() => {
-                  selectArtist(null);
-                  selectAlbum(album.id);
+                  selectAlbumKeepArtist(album.id);
                 }}
                 className="px-2.5 py-1.5 text-xs font-semibold bg-black text-white rounded hover:bg-gray-800 transition-colors"
               >

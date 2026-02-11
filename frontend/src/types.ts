@@ -15,6 +15,26 @@ export interface Album {
   genres: string[];
 }
 
+export interface ArtistNode {
+  creator_id: string;
+  display_name: string;
+  x: number;
+  y: number;
+  size: number;
+  album_count?: number;
+  genres?: string[];
+  country_code?: string | null;
+  popularity?: number | null;
+  image_url?: string | null;
+}
+
+export interface ArtistEdge {
+  source_creator_id: string;
+  target_creator_id: string;
+  weight: number;
+  components?: Record<string, number> | null;
+}
+
 export interface Coordinates {
   x: number;
   y: number;

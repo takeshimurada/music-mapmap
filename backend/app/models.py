@@ -292,6 +292,28 @@ class MapNode(Base):
     album_group = relationship("AlbumGroup", back_populates="map_node")
 
 
+class CreatorNode(Base):
+    __tablename__ = "creator_nodes"
+
+    creator_id = Column(String, ForeignKey("creators.creator_id"), primary_key=True)
+    x = Column(Float, nullable=False)
+    y = Column(Float, nullable=False)
+    size = Column(Float, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    creator = relationship("Creator")
+
+
+class CreatorEdge(Base):
+    __tablename__ = "creator_edges"
+
+    source_creator_id = Column(String, ForeignKey("creators.creator_id"), primary_key=True)
+    target_creator_id = Column(String, ForeignKey("creators.creator_id"), primary_key=True)
+    weight = Column(Float, nullable=False)
+    components = Column(JSON, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class AlbumDetailsCache(Base):
     __tablename__ = "album_details_cache"
 

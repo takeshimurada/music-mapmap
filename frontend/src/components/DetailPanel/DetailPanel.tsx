@@ -33,6 +33,9 @@ type Tab = 'log' | 'context' | 'tracks' | 'credits' | 'reviews';
 export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) => {
   const { selectedAlbumId, albums, selectAlbum, selectArtist } = useStore();
   const resolvedAlbumId = albumId ?? selectedAlbumId;
+  const storeAlbum = albums.find(a => a.id === resolvedAlbumId);
+  const [resolvedAlbum, setResolvedAlbum] = useState<typeof storeAlbum | null>(null);
+  const [resolvingAlbum, setResolvingAlbum] = useState(false);
   
   // Data State
   const [details, setDetails] = useState<ExtendedAlbumData | null>(null);
@@ -54,8 +57,53 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
   // Step 1: 이벤트 로그 중복 방지 (앨범별로 1회만 기록)
   const lastViewedAlbumRef = useRef<string | null>(null);
 
-  const album = albums.find(a => a.id === resolvedAlbumId);
+  const album = storeAlbum ?? resolvedAlbum;
   const [metaDetail, setMetaDetail] = useState<AlbumDetailMeta | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setResolvedAlbum(null);
+
+    if (!resolvedAlbumId || storeAlbum) {
+      setResolvingAlbum(false);
+      return () => {
+        alive = false;
+      };
+    }
+
+    const fetchAlbumSummary = async () => {
+      setResolvingAlbum(true);
+      try {
+        const res = await fetch(`${BACKEND_URL}/albums/${resolvedAlbumId}`);
+        if (!res.ok) return;
+        const payload = await res.json();
+        const data = payload?.data;
+        if (!alive || !data) return;
+        setResolvedAlbum({
+          id: data.id,
+          title: data.title,
+          artist: data.artist_name,
+          year: data.year,
+          releaseDate: data.release_date || undefined,
+          vibe: data.genre_vibe ?? 0.5,
+          popularity: data.popularity ?? 0,
+          region: (data.region_bucket as Region) ?? 'North America',
+          country: data.country || undefined,
+          coverUrl: data.cover_url || undefined,
+          genres: [data.genre || 'Unknown'],
+        });
+      } catch (err) {
+        console.warn('Failed to resolve album from API:', err);
+      } finally {
+        if (alive) setResolvingAlbum(false);
+      }
+    };
+
+    fetchAlbumSummary();
+    return () => {
+      alive = false;
+    };
+  }, [resolvedAlbumId, storeAlbum]);
 
   // Handle Research Call
   const handleResearch = useCallback(async () => {
@@ -210,7 +258,7 @@ export const DetailPanel: React.FC<{ albumId?: string | null }> = ({ albumId }) 
     return (
       <div className="h-full w-full flex items-center justify-center text-gray-400 text-sm flex-col gap-4">
         <Music size={48} className="opacity-20" />
-        <p>Select an album from the map</p>
+        <p>{resolvingAlbum ? 'Loading album details...' : 'Select an album from the map'}</p>
       </div>
     );
   }

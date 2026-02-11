@@ -10,6 +10,7 @@ import asyncio
 import os
 import sys
 import re
+import httpx
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, update
@@ -26,6 +27,24 @@ DATABASE_URL = os.getenv(
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+CAA_BASE = "https://coverartarchive.org/release-group"
+
+
+async def caa_best_cover_url(client: httpx.AsyncClient, rg_id: str) -> str | None:
+    """Return best available Cover Art Archive URL, or None if not found."""
+    sized = f"{CAA_BASE}/{rg_id}/front-500"
+    res = await client.head(sized)
+    if res.status_code == 200:
+        return sized
+
+    original = f"{CAA_BASE}/{rg_id}/front"
+    res = await client.head(original)
+    if res.status_code == 200:
+        return original
+
+    return None
+
 
 
 async def update_musicbrainz_covers():
@@ -44,21 +63,21 @@ async def update_musicbrainz_covers():
         print(f"📊 Found {len(albums)} MusicBrainz albums without covers")
         
         updated_count = 0
-        for album in albums:
-            # MusicBrainz Release Group ID 추출
-            # 예: "musicbrainz:release-group:abc123" -> "abc123"
-            match = re.match(r'musicbrainz:release-group:(.+)', album.album_group_id)
-            if match:
-                rg_id = match.group(1)
-                cover_url = f"https://coverartarchive.org/release-group/{rg_id}/front-500"
-                
-                # 앨범 업데이트
-                album.cover_url = cover_url
-                updated_count += 1
-                
-                if updated_count % 50 == 0:
-                    print(f"   ✅ Updated: {updated_count}/{len(albums)}")
-        
+        async with httpx.AsyncClient() as client:
+            for album in albums:
+                # MusicBrainz Release Group ID ???
+                # ?? "musicbrainz:release-group:abc123" -> "abc123"
+                match = re.match(r'musicbrainz:release-group:(.+)', album.album_group_id)
+                if match:
+                    rg_id = match.group(1)
+                    cover_url = await caa_best_cover_url(client, rg_id)
+                    if cover_url:
+                        # ??? ??????
+                        album.cover_url = cover_url
+                        updated_count += 1
+                    
+                    if updated_count % 50 == 0:
+                        print(f"   ??Updated: {updated_count}/{len(albums)}")
         # DB에 커밋
         await session.commit()
         print(f"\n✅ Successfully updated {updated_count} MusicBrainz album covers!")

@@ -62,7 +62,7 @@ async def search_albums(db: AsyncSession, q: str, limit: int = 20):
 async def get_album_group(db: AsyncSession, album_id: str):
     stmt = (
         select(AlbumGroup, MapNode)
-        .join(MapNode, AlbumGroup.album_group_id == MapNode.album_group_id)
+        .join(MapNode, AlbumGroup.album_group_id == MapNode.album_group_id, isouter=True)
         .where(AlbumGroup.album_group_id == album_id)
     )
     result = await db.execute(stmt)

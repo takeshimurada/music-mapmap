@@ -155,11 +155,33 @@ class ArtistRelationResponse(BaseModel):
     creator_id: str
     display_name: str
 
+
+class ArtistMapNodeResponse(BaseModel):
+    creator_id: str
+    display_name: str
+    x: float
+    y: float
+    size: float
+    genres: List[str] = []
+    country_code: Optional[str] = None
+    popularity: Optional[int] = None
+    album_count: int = 0
+    image_url: Optional[str] = None
+
+
+class ArtistMapEdgeResponse(BaseModel):
+    source_creator_id: str
+    target_creator_id: str
+    weight: float
+    components: Optional[dict] = None
+
 class ArtistProfileResponse(BaseModel):
     creator_id: Optional[str] = None
     display_name: str
     bio: Optional[str] = None
     image_url: Optional[str] = None
+    debut_country_code: Optional[str] = None
+    birth_country_code: Optional[str] = None
     genres: List[str] = []
     spotify_url: Optional[str] = None
     links: List[ArtistLinkResponse] = []

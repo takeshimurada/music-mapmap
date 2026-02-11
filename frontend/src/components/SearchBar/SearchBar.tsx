@@ -194,6 +194,7 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
       selectArtist(null);
     }
   };
+  const prioritizeArtists = location.pathname === '/artists';
 
   return (
     <div ref={containerRef} className="relative w-full group">
@@ -364,10 +365,10 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
           {/* Suggestions */}
           <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-2">
             {(suggestions.length > 0 || artistSuggestions.length > 0) ? (
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 {/* Albums */}
                 {suggestions.length > 0 && (
-                  <div>
+                  <div className={prioritizeArtists ? 'order-2' : 'order-1'}>
                     <h3 className="text-[8px] font-bold text-gray-400 uppercase tracking-wider px-2 py-2">📀 Albums</h3>
                     <div className="space-y-0.5">
                       {suggestions.map((album) => (
@@ -392,7 +393,7 @@ export const SearchBar: React.FC<{ variant?: SearchBarVariant; autoFocus?: boole
                 
                 {/* Artists */}
                 {artistSuggestions.length > 0 && (
-                  <div>
+                  <div className={prioritizeArtists ? 'order-1' : 'order-2'}>
                     <h3 className="text-[8px] font-bold text-gray-400 uppercase tracking-wider px-2 py-2">🎤 Artists</h3>
                     <div className="space-y-0.5">
                       {artistSuggestions.map((artist) => (

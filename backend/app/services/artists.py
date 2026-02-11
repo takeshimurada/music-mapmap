@@ -44,6 +44,17 @@ async def get_artist_profile(db: AsyncSession, name: str):
         ]
 
     discography_res = await album_repo.get_discography(db, display_name)
+    debut_country_code = None
+    if discography_res:
+        oldest = sorted(
+            discography_res,
+            key=lambda a: (a.original_year is None, a.original_year if a.original_year is not None else 10**9),
+        )
+        for a in oldest:
+            if a.country_code:
+                debut_country_code = a.country_code
+                break
+
     discography = [
         ArtistAlbumResponse(
             id=a.album_group_id,
@@ -77,6 +88,8 @@ async def get_artist_profile(db: AsyncSession, name: str):
         display_name=display_name,
         bio=bio,
         image_url=image_url,
+        debut_country_code=debut_country_code,
+        birth_country_code=creator.country_code if creator else None,
         genres=genres,
         spotify_url=spotify_url,
         links=links,

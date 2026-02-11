@@ -6,6 +6,7 @@ interface AppState {
   filteredAlbums: Album[];
   selectedAlbumId: string | null;
   selectedArtist: string | null;
+  artistConnections: { creator_id: string; display_name: string; weight: number; image_url?: string | null }[];
   brushedAlbumIds: string[]; // IDs selected via brush tool
   searchMatchedAlbumIds: string[]; // IDs matched by search (for highlighting)
   
@@ -29,7 +30,11 @@ interface AppState {
   toggleRegion: (region: Region) => void;
   setSelectedGenre: (genre: string | null) => void;
   selectAlbum: (id: string | null) => void;
+  selectAlbumKeepArtist: (id: string | null) => void;
   selectArtist: (name: string | null) => void;
+  setArtistConnections: (
+    items: { creator_id: string; display_name: string; weight: number; image_url?: string | null }[]
+  ) => void;
   setBrushedAlbums: (ids: string[]) => void;
   setSearchQuery: (query: string) => void;
   setViewport: (viewport: Viewport | ((prev: Viewport) => Viewport)) => void;
@@ -142,6 +147,7 @@ export const useStore = create<AppState>((set, get) => ({
   filteredAlbums: [],
   selectedAlbumId: null,
   selectedArtist: null,
+  artistConnections: [],
   brushedAlbumIds: [],
   searchMatchedAlbumIds: [],
   yearRange: [MIN_YEAR, MAX_YEAR],
@@ -236,7 +242,14 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   selectAlbum: (id) => set((state) => ({ selectedAlbumId: id, selectedArtist: id ? null : state.selectedArtist })),
-  selectArtist: (name) => set({ selectedArtist: name }),
+  selectAlbumKeepArtist: (id) => set({ selectedAlbumId: id }),
+  selectArtist: (name) =>
+    set({
+      selectedArtist: name,
+      selectedAlbumId: name ? null : get().selectedAlbumId,
+      artistConnections: name ? get().artistConnections : [],
+    }),
+  setArtistConnections: (items) => set({ artistConnections: items }),
   setBrushedAlbums: (ids) => set({ brushedAlbumIds: ids }),
   
   setViewport: (vp) => set((state) => ({
